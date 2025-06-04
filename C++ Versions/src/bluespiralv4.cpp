@@ -37,7 +37,6 @@ int main()
 	debugPosition2.printStats();
 	debugPosition2.printAllMoves();
 	*/
-	/*
 	char* buffer = new char[80];
 	std::cout << "FENString: ";
 	std::cin.getline(buffer,80);
@@ -50,10 +49,6 @@ int main()
 		std::cin.getline(buffer,80);
 	}
 	delete[] buffer;
-	*/
-	Game gameObj = Game("1r3k2/8/8/8/8/8/8/3KR3 w - - 0 1");
-	gameObj.generateMoveTree(3);
-	gameObj.printMoveTree(3);
 	auto endTime = std::chrono::high_resolution_clock::now();
 	//4. Print Time & Analytics
 	std::chrono::duration<double, std::milli> duration_milli = endTime-startTime;
