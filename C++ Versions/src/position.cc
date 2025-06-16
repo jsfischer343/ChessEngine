@@ -227,7 +227,7 @@ Position::Position(const char* FENString)
 	delete[] tempBuffer;
 	FEN_charIndex=FEN_charIndex+1;
 	FEN_currentChar = FENString[FEN_charIndex];
-	
+
 	//movecounter
 	tempBuffer = new char[4];
 	j=0;
@@ -248,9 +248,41 @@ Position::Position(const char* FENString)
 	canCastle[kingside_black] = checkCanCastle(kingside_black);
 	canCastle[queenside_black] = checkCanCastle(queenside_black);
 }
-
 Position::Position(const Position& lastPosition, const move moveMade)
 {
+	setupMemory();
+	//DEEPCOPY
+	//Pieces
+	whitePieces_L = lastPosition.whitePieces_L;
+	blackPieces_L = lastPosition.blackPieces_L;
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		if(lastPosition.whitePieces[i].type=='\0')
+			continue;
+		//White
+		whitePieces[i].type = lastPosition.whitePieces[i].type;
+		whitePieces[i].color = lastPosition.whitePieces[i].color;
+		whitePieces[i].rank = lastPosition.whitePieces[i].rank;
+		whitePieces[i].file = lastPosition.whitePieces[i].file;
+		whitePieces[i].squarePtr = &theBoard[whitePieces[i].rank][whitePieces[i].file];
+		theBoard[whitePieces[i].rank][whitePieces[i].file].piecePtr = &whitePieces[i];
+		//Note: targeters and moves not copied
+	}
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		if(lastPosition.blackPieces[i].type=='\0')
+			continue;
+		//Black
+		blackPieces[i].type = lastPosition.blackPieces[i].type;
+		blackPieces[i].color = lastPosition.blackPieces[i].color;
+		blackPieces[i].rank = lastPosition.blackPieces[i].rank;
+		blackPieces[i].file = lastPosition.blackPieces[i].file;
+		blackPieces[i].squarePtr = &theBoard[blackPieces[i].rank][blackPieces[i].file];
+		theBoard[blackPieces[i].rank][blackPieces[i].file].piecePtr = &blackPieces[i];
+		//Note: targeters and moves not copied
+	}
+
+	//Catch Castling Moves
 	if(moveMade.startRank==7 && moveMade.startFile==4 &&
 	moveMade.endRank==7 && moveMade.endFile==6 &&
 	moveMade.endPieceType=='k')
@@ -275,39 +307,10 @@ Position::Position(const Position& lastPosition, const move moveMade)
 	{
 		castlingConstructor(lastPosition, queenside_black);
 	}
+
+	//Otherwise Normal Moves Steps
 	else
 	{
-		setupMemory();
-		//--DEEPCOPY--
-		//Pieces
-		whitePieces_L = lastPosition.whitePieces_L;
-		blackPieces_L = lastPosition.blackPieces_L;
-		for(int i=0;i<MAX_PIECES;i++)
-		{
-			if(lastPosition.whitePieces[i].type=='\0')
-				continue;
-			//White
-			whitePieces[i].type = lastPosition.whitePieces[i].type;
-			whitePieces[i].color = lastPosition.whitePieces[i].color;
-			whitePieces[i].rank = lastPosition.whitePieces[i].rank;
-			whitePieces[i].file = lastPosition.whitePieces[i].file;
-			whitePieces[i].squarePtr = &theBoard[whitePieces[i].rank][whitePieces[i].file];
-			theBoard[whitePieces[i].rank][whitePieces[i].file].piecePtr = &whitePieces[i];
-			//Note: targeters and moves not copied
-		}	
-		for(int i=0;i<MAX_PIECES;i++)
-		{
-			if(lastPosition.blackPieces[i].type=='\0')
-				continue;
-			//Black
-			blackPieces[i].type = lastPosition.blackPieces[i].type;
-			blackPieces[i].color = lastPosition.blackPieces[i].color;
-			blackPieces[i].rank = lastPosition.blackPieces[i].rank;
-			blackPieces[i].file = lastPosition.blackPieces[i].file;
-			blackPieces[i].squarePtr = &theBoard[blackPieces[i].rank][blackPieces[i].file];
-			theBoard[blackPieces[i].rank][blackPieces[i].file].piecePtr = &blackPieces[i];
-			//Note: targeters and moves not copied
-		}
 		//Castling Flags
 		for(int i=0;i<4;i++)
 		{
@@ -320,11 +323,14 @@ Position::Position(const Position& lastPosition, const move moveMade)
 		}
 		else if(lastPosition.theBoard[moveMade.endRank][moveMade.endFile].piecePtr!=NULL)
 		{
+			fiftyMoveRuleCounter = 0;
+		}
+		else
+		{
 			fiftyMoveRuleCounter = lastPosition.fiftyMoveRuleCounter+1;
 		}
-		//---
-		
-		
+
+
 		//Updates based on turn
 		if(lastPosition.colorToMove=='w')
 		{
@@ -370,14 +376,14 @@ Position::Position(const Position& lastPosition, const move moveMade)
 				}
 			}
 		}
-		
-		//Update the board based on the 'moveMade'
+
+		//Make Move: update the board based on the 'moveMade'
 		piece* pieceBeingMoved = theBoard[moveMade.startRank][moveMade.startFile].piecePtr;
 		char type = moveMade.endPieceType;
 		char color = pieceBeingMoved->color;
 		removePiece(pieceBeingMoved);
 		initPiece(moveMade.endRank,moveMade.endFile,type,color);
-		
+
 		resolve();
 		//determine ability to castle
 		canCastle[kingside_white] = checkCanCastle(kingside_white);
@@ -388,37 +394,6 @@ Position::Position(const Position& lastPosition, const move moveMade)
 }
 void Position::castlingConstructor(const Position& lastPosition, const int8_t castlingCode)
 {
-	setupMemory();
-	//--DEEPCOPY--
-	//Pieces
-	whitePieces_L = lastPosition.whitePieces_L;
-	blackPieces_L = lastPosition.blackPieces_L;
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		if(lastPosition.whitePieces[i].type=='\0')
-			continue;
-		//White
-		whitePieces[i].type = lastPosition.whitePieces[i].type;
-		whitePieces[i].color = lastPosition.whitePieces[i].color;
-		whitePieces[i].rank = lastPosition.whitePieces[i].rank;
-		whitePieces[i].file = lastPosition.whitePieces[i].file;
-		whitePieces[i].squarePtr = &theBoard[whitePieces[i].rank][whitePieces[i].file];
-		theBoard[whitePieces[i].rank][whitePieces[i].file].piecePtr = &whitePieces[i];
-		//Note: targeters and moves not copied
-	}	
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		if(lastPosition.blackPieces[i].type=='\0')
-			continue;
-		//Black
-		blackPieces[i].type = lastPosition.blackPieces[i].type;
-		blackPieces[i].color = lastPosition.blackPieces[i].color;
-		blackPieces[i].rank = lastPosition.blackPieces[i].rank;
-		blackPieces[i].file = lastPosition.blackPieces[i].file;
-		blackPieces[i].squarePtr = &theBoard[blackPieces[i].rank][blackPieces[i].file];
-		theBoard[blackPieces[i].rank][blackPieces[i].file].piecePtr = &blackPieces[i];
-		//Note: targeters and moves not copied
-	}
 	//Castling Flags
 	for(int i=0;i<4;i++)
 	{
@@ -436,9 +411,8 @@ void Position::castlingConstructor(const Position& lastPosition, const int8_t ca
 	}
 	//fiftyMoveRuleCounter
 	fiftyMoveRuleCounter = lastPosition.fiftyMoveRuleCounter+1;
-	//---
-	
-	
+
+
 	//Updates based on turn
 	if(lastPosition.colorToMove=='w')
 	{
@@ -450,8 +424,8 @@ void Position::castlingConstructor(const Position& lastPosition, const int8_t ca
 		moveCounter = lastPosition.moveCounter+1;
 		colorToMove = 'w';
 	}
-	
-	//Update the board based on the 'castlingCode'
+
+	//Make Move: Update the board based on the 'castlingCode'
 	if(castlingCode == kingside_white)
 	{
 		removePiece(theBoard[7][4].piecePtr);
@@ -480,8 +454,6 @@ void Position::castlingConstructor(const Position& lastPosition, const int8_t ca
 		removePiece(theBoard[0][0].piecePtr);
 		initPiece(0,3,'r','b');
 	}
-	//*removePiece(pieceBeingMoved);
-	//*initPiece(moveMade.endRank,moveMade.endFile,type,color);
 	resolve();
 	//determine ability to castle
 	canCastle[kingside_white] = checkCanCastle(kingside_white);
@@ -491,6 +463,40 @@ void Position::castlingConstructor(const Position& lastPosition, const int8_t ca
 }
 Position::Position(const Position* lastPosition, const move moveMade)
 {
+//Pointer version of above constructor
+	setupMemory();
+	//--DEEPCOPY--
+	//Pieces
+	whitePieces_L = lastPosition->whitePieces_L;
+	blackPieces_L = lastPosition->blackPieces_L;
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		if(lastPosition->whitePieces[i].type=='\0')
+			continue;
+		//White
+		whitePieces[i].type = lastPosition->whitePieces[i].type;
+		whitePieces[i].color = lastPosition->whitePieces[i].color;
+		whitePieces[i].rank = lastPosition->whitePieces[i].rank;
+		whitePieces[i].file = lastPosition->whitePieces[i].file;
+		whitePieces[i].squarePtr = &theBoard[whitePieces[i].rank][whitePieces[i].file];
+		theBoard[whitePieces[i].rank][whitePieces[i].file].piecePtr = &whitePieces[i];
+		//Note: targeters and moves not copied
+	}
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		if(lastPosition->blackPieces[i].type=='\0')
+			continue;
+		//Black
+		blackPieces[i].type = lastPosition->blackPieces[i].type;
+		blackPieces[i].color = lastPosition->blackPieces[i].color;
+		blackPieces[i].rank = lastPosition->blackPieces[i].rank;
+		blackPieces[i].file = lastPosition->blackPieces[i].file;
+		blackPieces[i].squarePtr = &theBoard[blackPieces[i].rank][blackPieces[i].file];
+		theBoard[blackPieces[i].rank][blackPieces[i].file].piecePtr = &blackPieces[i];
+		//Note: targeters and moves not copied
+	}
+
+	//Catch Castling Moves
 	if(moveMade.startRank==7 && moveMade.startFile==4 &&
 	moveMade.endRank==7 && moveMade.endFile==6 &&
 	moveMade.endPieceType=='k')
@@ -517,37 +523,6 @@ Position::Position(const Position* lastPosition, const move moveMade)
 	}
 	else
 	{
-		setupMemory();
-		//--DEEPCOPY--
-		//Pieces
-		whitePieces_L = lastPosition->whitePieces_L;
-		blackPieces_L = lastPosition->blackPieces_L;
-		for(int i=0;i<MAX_PIECES;i++)
-		{
-			if(lastPosition->whitePieces[i].type=='\0')
-				continue;
-			//White
-			whitePieces[i].type = lastPosition->whitePieces[i].type;
-			whitePieces[i].color = lastPosition->whitePieces[i].color;
-			whitePieces[i].rank = lastPosition->whitePieces[i].rank;
-			whitePieces[i].file = lastPosition->whitePieces[i].file;
-			whitePieces[i].squarePtr = &theBoard[whitePieces[i].rank][whitePieces[i].file];
-			theBoard[whitePieces[i].rank][whitePieces[i].file].piecePtr = &whitePieces[i];
-			//Note: targeters and moves not copied
-		}	
-		for(int i=0;i<MAX_PIECES;i++)
-		{
-			if(lastPosition->blackPieces[i].type=='\0')
-				continue;
-			//Black
-			blackPieces[i].type = lastPosition->blackPieces[i].type;
-			blackPieces[i].color = lastPosition->blackPieces[i].color;
-			blackPieces[i].rank = lastPosition->blackPieces[i].rank;
-			blackPieces[i].file = lastPosition->blackPieces[i].file;
-			blackPieces[i].squarePtr = &theBoard[blackPieces[i].rank][blackPieces[i].file];
-			theBoard[blackPieces[i].rank][blackPieces[i].file].piecePtr = &blackPieces[i];
-			//Note: targeters and moves not copied
-		}
 		//Castling Flags
 		for(int i=0;i<4;i++)
 		{
@@ -560,11 +535,13 @@ Position::Position(const Position* lastPosition, const move moveMade)
 		}
 		else if(lastPosition->theBoard[moveMade.endRank][moveMade.endFile].piecePtr!=NULL)
 		{
+			fiftyMoveRuleCounter = 0;
+		}
+		else
+		{
 			fiftyMoveRuleCounter = lastPosition->fiftyMoveRuleCounter+1;
 		}
-		//---
-		
-		
+
 		//Updates based on turn
 		if(lastPosition->colorToMove=='w')
 		{
@@ -610,14 +587,14 @@ Position::Position(const Position* lastPosition, const move moveMade)
 				}
 			}
 		}
-		
-		//Update the board based on the 'moveMade'
+
+		//Make Move: Update the board based on the 'moveMade'
 		piece* pieceBeingMoved = theBoard[moveMade.startRank][moveMade.startFile].piecePtr;
 		char type = moveMade.endPieceType;
 		char color = pieceBeingMoved->color;
 		removePiece(pieceBeingMoved);
 		initPiece(moveMade.endRank,moveMade.endFile,type,color);
-		
+
 		resolve();
 		//determine ability to castle
 		canCastle[kingside_white] = checkCanCastle(kingside_white);
@@ -628,37 +605,6 @@ Position::Position(const Position* lastPosition, const move moveMade)
 }
 void Position::castlingConstructor(const Position* lastPosition, const int8_t castlingCode)
 {
-	setupMemory();
-	//--DEEPCOPY--
-	//Pieces
-	whitePieces_L = lastPosition->whitePieces_L;
-	blackPieces_L = lastPosition->blackPieces_L;
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		if(lastPosition->whitePieces[i].type=='\0')
-			continue;
-		//White
-		whitePieces[i].type = lastPosition->whitePieces[i].type;
-		whitePieces[i].color = lastPosition->whitePieces[i].color;
-		whitePieces[i].rank = lastPosition->whitePieces[i].rank;
-		whitePieces[i].file = lastPosition->whitePieces[i].file;
-		whitePieces[i].squarePtr = &theBoard[whitePieces[i].rank][whitePieces[i].file];
-		theBoard[whitePieces[i].rank][whitePieces[i].file].piecePtr = &whitePieces[i];
-		//Note: targeters and moves not copied
-	}	
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		if(lastPosition->blackPieces[i].type=='\0')
-			continue;
-		//Black
-		blackPieces[i].type = lastPosition->blackPieces[i].type;
-		blackPieces[i].color = lastPosition->blackPieces[i].color;
-		blackPieces[i].rank = lastPosition->blackPieces[i].rank;
-		blackPieces[i].file = lastPosition->blackPieces[i].file;
-		blackPieces[i].squarePtr = &theBoard[blackPieces[i].rank][blackPieces[i].file];
-		theBoard[blackPieces[i].rank][blackPieces[i].file].piecePtr = &blackPieces[i];
-		//Note: targeters and moves not copied
-	}
 	//Castling Flags
 	for(int i=0;i<4;i++)
 	{
@@ -676,9 +622,7 @@ void Position::castlingConstructor(const Position* lastPosition, const int8_t ca
 	}
 	//fiftyMoveRuleCounter
 	fiftyMoveRuleCounter = lastPosition->fiftyMoveRuleCounter+1;
-	//---
-	
-	
+
 	//Updates based on turn
 	if(lastPosition->colorToMove=='w')
 	{
@@ -690,8 +634,8 @@ void Position::castlingConstructor(const Position* lastPosition, const int8_t ca
 		moveCounter = lastPosition->moveCounter+1;
 		colorToMove = 'w';
 	}
-	
-	//Update the board based on the 'castlingCode'
+
+	//Make Move: update the board based on the 'castlingCode'
 	if(castlingCode == kingside_white)
 	{
 		removePiece(theBoard[7][4].piecePtr);
@@ -720,8 +664,6 @@ void Position::castlingConstructor(const Position* lastPosition, const int8_t ca
 		removePiece(theBoard[0][0].piecePtr);
 		initPiece(0,3,'r','b');
 	}
-	//*removePiece(pieceBeingMoved);
-	//*initPiece(moveMade.endRank,moveMade.endFile,type,color);
 	resolve();
 	//determine ability to castle
 	canCastle[kingside_white] = checkCanCastle(kingside_white);
@@ -729,130 +671,11 @@ void Position::castlingConstructor(const Position* lastPosition, const int8_t ca
 	canCastle[kingside_black] = checkCanCastle(kingside_black);
 	canCastle[queenside_black] = checkCanCastle(queenside_black);
 }
-
 Position::~Position()
 {
 	cleanupMemory();
 }
 
-//-Debug Information-
-void Position::printBoard()
-{
-	for(int i=0;i<8;i++)
-	{
-		for(int j=0;j<8;j++)
-		{
-			if(theBoard[i][j].piecePtr==NULL)
-			{
-				printf("\t.");
-			}
-			else
-			{
-				if(theBoard[i][j].piecePtr->color=='w')
-				{
-					printf("\t%c",(char)std::toupper(theBoard[i][j].piecePtr->type));
-				}
-				else
-				{
-					printf("\t%c",theBoard[i][j].piecePtr->type);
-				}
-			}
-		}
-		printf("\n\n\n");
-	}
-}
-void Position::printStats()
-{
-	printf("Color To Move: %c\n",colorToMove);
-	printf("Castling Flags: [%d,%d,%d,%d]\n",castlingFlags[kingside_white],castlingFlags[queenside_white],castlingFlags[kingside_black],castlingFlags[queenside_black]);
-	printf("Can Castle: [%d,%d,%d,%d]\n",canCastle[kingside_white],canCastle[queenside_white],canCastle[kingside_black],canCastle[queenside_black]);
-	printf("En Passant: (%d,%d)\n",enPassantRank,enPassantFile);
-	printf("Fifty Move Rule Counter: %d\n",fiftyMoveRuleCounter);
-	printf("Move: %d\n",moveCounter);
-}
-void Position::printAllTargets()
-{
-	piece* currentPiecePtr;
-	char type;
-	char rank;
-	char file;
-	printf("\n-------White Pieces-------\n");
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		if(whitePieces[i].type=='\0')
-			continue;
-		currentPiecePtr = &whitePieces[i];
-		type = (char)std::toupper(currentPiecePtr->type);
-		rank = engineRank_TO_notationRank(currentPiecePtr->rank);
-		file = engineFile_TO_notationFile(currentPiecePtr->file);
-		printf("\twhitePieces[%d]: %c%c%c\n",i,type,file,rank);
-		for(int j=0;j<currentPiecePtr->targets_L;j++)
-		{
-			rank = engineRank_TO_notationRank(currentPiecePtr->targets[j]->rank);
-			file = engineFile_TO_notationFile(currentPiecePtr->targets[j]->file);
-			printf("\t\ttargets[%d]: %c%c\n",j,file,rank);
-		}
-	}
-	printf("\n-------Black Pieces-------\n");
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		if(whitePieces[i].type=='\0')
-			continue;
-		currentPiecePtr = &blackPieces[i];
-		type = currentPiecePtr->type;
-		rank = engineRank_TO_notationRank(currentPiecePtr->rank);
-		file = engineFile_TO_notationFile(currentPiecePtr->file);
-		printf("\tblackPieces[%d]: %c%c%c\n",i,type,file,rank);
-		for(int j=0;j<currentPiecePtr->targets_L;j++)
-		{
-			rank = engineRank_TO_notationRank(currentPiecePtr->targets[j]->rank);
-			file = engineFile_TO_notationFile(currentPiecePtr->targets[j]->file);
-			printf("\t\ttargets[%d]: %c%c\n",j,file,rank);
-		}
-	}
-}
-void Position::printAllMoves()
-{
-	piece* currentPiecePtr;
-	char type;
-	char rank;
-	char file;
-	printf("\n-------White Pieces-------\n");
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		if(whitePieces[i].type=='\0')
-			continue;
-		currentPiecePtr = &whitePieces[i];
-		type = (char)std::toupper(currentPiecePtr->type);
-		rank = engineRank_TO_notationRank(currentPiecePtr->rank);
-		file = engineFile_TO_notationFile(currentPiecePtr->file);
-		printf("\twhitePieces[%d]: %c%c%c\n",i,type,file,rank);
-		for(int j=0;j<currentPiecePtr->moves_L;j++)
-		{
-			rank = engineRank_TO_notationRank(currentPiecePtr->moves[j]->rank);
-			file = engineFile_TO_notationFile(currentPiecePtr->moves[j]->file);
-			printf("\t\tmoves[%d]: %c%c\n",j,file,rank);
-		}
-	}
-	printf("\n-------Black Pieces-------\n");
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		if(whitePieces[i].type=='\0')
-			continue;
-		currentPiecePtr = &blackPieces[i];
-		type = currentPiecePtr->type;
-		rank = engineRank_TO_notationRank(currentPiecePtr->rank);
-		file = engineFile_TO_notationFile(currentPiecePtr->file);
-		printf("\tblackPieces[%d]: %c%c%c\n",i,type,file,rank);
-		for(int j=0;j<currentPiecePtr->moves_L;j++)
-		{
-			rank = engineRank_TO_notationRank(currentPiecePtr->moves[j]->rank);
-			file = engineFile_TO_notationFile(currentPiecePtr->moves[j]->file);
-			printf("\t\tmoves[%d]: %c%c\n",j,file,rank);
-		}
-	}
-}
-		
 //-Get-
 int Position::getTotalMoves()
 {
@@ -895,7 +718,7 @@ int Position::getTotalMoves()
 	}
 	return totalMoves;
 }
-Position::move* Position::getAllMoves()
+move* Position::getAllMoves()
 {
 	int totalMoves = getTotalMoves();
 	int remainingMoves = totalMoves;
@@ -1034,12 +857,17 @@ Position::move* Position::getAllMoves()
 }
 char* Position::getNotation(const move& moveInQuestion)
 {
-	char* buffer = new char[10];
+	size_t buffer_L = 10;
+	char* buffer = new char[buffer_L];
 	buffer[0] = 'N';
 	buffer[1] = 'U';
 	buffer[2] = 'L';
 	buffer[3] = 'L';
-	
+	for(int i=4;i<buffer_L;i++)
+	{
+		buffer[i] = '\0';
+	}
+
 	if(moveInQuestion.startRank==-1)
 		return buffer;
 	//1. Piece Type
@@ -1056,7 +884,7 @@ char* Position::getNotation(const move& moveInQuestion)
 	char promotion[2];
 	//6. Check or Checkmate
 	char checkOrCheckmate;
-	
+
 	//Castling
 	if(moveInQuestion.startRank==7 && moveInQuestion.startFile==4 && moveInQuestion.endRank==7 && moveInQuestion.endFile==6 && moveInQuestion.endPieceType=='k')
 	{
@@ -1096,6 +924,7 @@ char* Position::getNotation(const move& moveInQuestion)
 		buffer[4] = 'O';
 		return buffer;
 	}
+	//
 	else
 	{
 		if(theBoard[moveInQuestion.startRank][moveInQuestion.startFile].piecePtr->color=='w')
@@ -1166,18 +995,43 @@ char* Position::getNotation(const move& moveInQuestion)
 				promotion[1] = ' ';
 			}
 			//
-			//TODO: check and checkmate
-			pieceType = (char)std::toupper(pieceType);
+
 			//fill buffer
-			buffer[0] = pieceType;
-			buffer[1] = disambig[0];
-			buffer[2] = disambig[1];
-			buffer[3] = capture;
-			buffer[4] = destination[0];
-			buffer[5] = destination[1];
-			buffer[6] = promotion[0];
-			buffer[7] = promotion[1];
-			buffer[8] = ' ';
+			int tempIndex = 0;
+			buffer[tempIndex] = (char)std::toupper(pieceType);
+			tempIndex++;
+			if(disambig[0]!=' ')
+			{
+				buffer[tempIndex] = disambig[0];
+				tempIndex++;
+			}
+			if(disambig[1]!=' ')
+			{
+				buffer[tempIndex] = disambig[1];
+				tempIndex++;
+			}
+			if(capture!=' ')
+			{
+				buffer[tempIndex] = capture;
+				tempIndex++;
+			}
+			buffer[tempIndex] = destination[0];
+			tempIndex++;
+			buffer[tempIndex] = destination[1];
+			tempIndex++;
+			if(promotion[0]!=' ')
+			{
+				buffer[tempIndex] = promotion[0];
+				tempIndex++;
+				buffer[tempIndex] = (char)std::toupper(promotion[1]);
+				tempIndex++;
+			}
+			//TODO: checks and checkmates
+			while(tempIndex<buffer_L)
+			{
+				buffer[tempIndex] = '\0';
+				tempIndex++;
+			}
 		}
 		else
 		{
@@ -1247,22 +1101,710 @@ char* Position::getNotation(const move& moveInQuestion)
 				promotion[1] = ' ';
 			}
 			//
-			//TODO: check and checkmate
-			
+
 			//fill buffer
-			buffer[0] = pieceType;
-			buffer[1] = disambig[0];
-			buffer[2] = disambig[1];
-			buffer[3] = capture;
-			buffer[4] = destination[0];
-			buffer[5] = destination[1];
-			buffer[6] = promotion[0];
-			buffer[7] = promotion[1];
-			buffer[8] = ' ';
+			int tempIndex = 0;
+			buffer[tempIndex] = pieceType;
+			tempIndex++;
+			if(disambig[0]!=' ')
+			{
+				buffer[tempIndex] = disambig[0];
+				tempIndex++;
+			}
+			if(disambig[1]!=' ')
+			{
+				buffer[tempIndex] = disambig[1];
+				tempIndex++;
+			}
+			if(capture!=' ')
+			{
+				buffer[tempIndex] = capture;
+				tempIndex++;
+			}
+			buffer[tempIndex] = destination[0];
+			tempIndex++;
+			buffer[tempIndex] = destination[1];
+			tempIndex++;
+			if(promotion[0]!=' ')
+			{
+				buffer[tempIndex] = promotion[0];
+				tempIndex++;
+				buffer[tempIndex] = promotion[1];
+				tempIndex++;
+			}
+			//TODO: checks and checkmates
+			while(tempIndex<buffer_L)
+			{
+				buffer[tempIndex] = '\0';
+				tempIndex++;
+			}
 		}
 	}
 	return buffer;
 }
+move Position::getMoveFromNotation(const char* notation)
+{
+	move returnMove = move();
+	//Castling
+	if(notation[0]=='O' &&
+	notation[1]=='-' &&
+	notation[2]=='O' &&
+	colorToMove=='w')
+	{
+		returnMove.startRank = 7;
+		returnMove.startFile = 4;
+		returnMove.endRank = 7;
+		returnMove.endFile = 6;
+		returnMove.endPieceType = 'k';
+		return returnMove;
+	}
+	if(notation[0]=='O' &&
+	notation[1]=='-' &&
+	notation[2]=='O' &&
+	notation[3]=='-' &&
+	notation[4]=='O' &&
+	colorToMove=='w')
+	{
+		returnMove.startRank = 7;
+		returnMove.startFile = 4;
+		returnMove.endRank = 7;
+		returnMove.endFile = 2;
+		returnMove.endPieceType = 'k';
+		return returnMove;
+	}
+	if(notation[0]=='O' &&
+	notation[1]=='-' &&
+	notation[2]=='O' &&
+	colorToMove=='b')
+	{
+		returnMove.startRank = 0;
+		returnMove.startFile = 4;
+		returnMove.endRank = 0;
+		returnMove.endFile = 6;
+		returnMove.endPieceType = 'k';
+		return returnMove;
+	}
+	if(notation[0]=='O' &&
+	notation[1]=='-' &&
+	notation[2]=='O' &&
+	notation[3]=='-' &&
+	notation[4]=='O' &&
+	colorToMove=='b')
+	{
+		returnMove.startRank = 0;
+		returnMove.startFile = 4;
+		returnMove.endRank = 0;
+		returnMove.endFile = 2;
+		returnMove.endPieceType = 'k';
+		return returnMove;
+	}
+
+	char pieceType = (char)std::tolower(notation[0]);
+	int8_t startRank = -1;
+	int8_t startFile = -1;
+	int8_t endRank = -1;
+	int8_t endFile = -1;
+
+	if(isFileOrRank(notation[1]) &&
+	isFileOrRank(notation[2]))
+	{
+		if(!isFileOrRank(notation[3]) &&
+		notation[3]!='x')
+		{
+			//1,2 are destination
+			endRank = notationRank_TO_engineRank(notation[2]);
+			endFile = notationFile_TO_engineFile(notation[1]);
+			for(int i=0;i<theBoard[endRank][endFile].moves_L;i++)
+			{
+				if(theBoard[endRank][endFile].moves[i]->type==pieceType &&
+				theBoard[endRank][endFile].moves[i]->color==colorToMove)
+				{
+					startRank = theBoard[endRank][endFile].moves[i]->rank;
+					startFile = theBoard[endRank][endFile].moves[i]->file;
+					break;
+				}
+			}
+			//promotion
+			if(notation[3]=='=')
+			{
+				pieceType = (char)std::tolower(notation[4]);
+			}
+		}
+		else if(isFileOrRank(notation[3]) &&
+		!isFileOrRank(notation[4]))
+		{
+			//single disambig
+			endRank = notationRank_TO_engineRank(notation[3]);
+			endFile = notationFile_TO_engineFile(notation[2]);
+			//rank or file?
+			if(isFile(notation[1]))
+			{
+				//file
+				for(int i=0;i<theBoard[endRank][endFile].moves_L;i++)
+				{
+					if(theBoard[endRank][endFile].moves[i]->type==pieceType &&
+					theBoard[endRank][endFile].moves[i]->file==notationFile_TO_engineFile(notation[1]) &&
+					theBoard[endRank][endFile].moves[i]->color==colorToMove)
+					{
+						startRank = theBoard[endRank][endFile].moves[i]->rank;
+						startFile = theBoard[endRank][endFile].moves[i]->file;
+						break;
+					}
+				}
+			}
+			else if(isRank(notation[1]))
+			{
+				//rank
+				for(int i=0;i<theBoard[endRank][endFile].moves_L;i++)
+				{
+					if(theBoard[endRank][endFile].moves[i]->type==pieceType &&
+					theBoard[endRank][endFile].moves[i]->rank==notationRank_TO_engineRank(notation[1]) &&
+					theBoard[endRank][endFile].moves[i]->color==colorToMove)
+					{
+						startRank = theBoard[endRank][endFile].moves[i]->rank;
+						startFile = theBoard[endRank][endFile].moves[i]->file;
+						break;
+					}
+				}
+			}
+			//promotion
+			if(notation[4]=='=')
+			{
+				pieceType = (char)std::tolower(notation[5]);
+			}
+		}
+		else if(isFileOrRank(notation[3]) &&
+		isFileOrRank(notation[4]))
+		{
+			//double disambig
+			startRank = notationRank_TO_engineRank(notation[2]);
+			startFile = notationFile_TO_engineFile(notation[1]);
+			endRank = notationRank_TO_engineRank(notation[4]);
+			endFile = notationFile_TO_engineFile(notation[3]);
+			//promotion
+			if(notation[5]=='=')
+			{
+				pieceType = (char)std::tolower(notation[6]);
+			}
+		}
+		else if(notation[3]=='x' &&
+		isFileOrRank(notation[4]) &&
+		isFileOrRank(notation[5]))
+		{
+			//double disambig capture
+			startRank = notationRank_TO_engineRank(notation[2]);
+			startFile = notationFile_TO_engineFile(notation[1]);
+			endRank = notationRank_TO_engineRank(notation[5]);
+			endFile = notationFile_TO_engineFile(notation[4]);
+			//promotion
+			if(notation[6]=='=')
+			{
+				pieceType = (char)std::tolower(notation[7]);
+			}
+		}
+	}
+	else if(notation[1]=='x' &&
+	isFileOrRank(notation[2]) &&
+	isFileOrRank(notation[3]))
+	{
+		//capture then destination
+		endRank = notationRank_TO_engineRank(notation[3]);
+		endFile = notationFile_TO_engineFile(notation[2]);
+		for(int i=0;i<theBoard[endRank][endFile].moves_L;i++)
+		{
+			if(theBoard[endRank][endFile].moves[i]->type==pieceType &&
+			theBoard[endRank][endFile].moves[i]->color==colorToMove)
+			{
+				startRank = theBoard[endRank][endFile].moves[i]->rank;
+				startFile = theBoard[endRank][endFile].moves[i]->file;
+				break;
+			}
+		}
+		//promotion
+		if(notation[4]=='=')
+		{
+			pieceType = (char)std::tolower(notation[5]);
+		}
+	}
+	else if(isFileOrRank(notation[1]) &&
+	notation[2]=='x' &&
+	isFileOrRank(notation[3]) &&
+	isFileOrRank(notation[4]))
+	{
+		//single disambig capture
+		endRank = notationRank_TO_engineRank(notation[4]);
+		endFile = notationFile_TO_engineFile(notation[3]);
+		//rank or file?
+		if(isFile(notation[1]))
+		{
+			//file
+			for(int i=0;i<theBoard[endRank][endFile].moves_L;i++)
+			{
+				if(theBoard[endRank][endFile].moves[i]->type==pieceType &&
+				theBoard[endRank][endFile].moves[i]->file==notationFile_TO_engineFile(notation[1]) &&
+				theBoard[endRank][endFile].moves[i]->color==colorToMove)
+				{
+					startRank = theBoard[endRank][endFile].moves[i]->rank;
+					startFile = theBoard[endRank][endFile].moves[i]->file;
+					break;
+				}
+			}
+		}
+		else if(isRank(notation[1]))
+		{
+			//rank
+			for(int i=0;i<theBoard[endRank][endFile].moves_L;i++)
+			{
+				if(theBoard[endRank][endFile].moves[i]->type==pieceType &&
+				theBoard[endRank][endFile].moves[i]->rank==notationRank_TO_engineRank(notation[1]) &&
+				theBoard[endRank][endFile].moves[i]->color==colorToMove)
+				{
+					startRank = theBoard[endRank][endFile].moves[i]->rank;
+					startFile = theBoard[endRank][endFile].moves[i]->file;
+					break;
+				}
+			}
+		}
+		//promotion
+		if(notation[5]=='=')
+		{
+			pieceType = (char)std::tolower(notation[6]);
+		}
+	}
+
+	if(startRank==-1)
+	{
+		return returnMove;
+	}
+	returnMove.startRank = startRank;
+	returnMove.startFile = startFile;
+	returnMove.endRank = endRank;
+	returnMove.endFile = endFile;
+	returnMove.endPieceType = pieceType;
+	return returnMove;
+}
+int Position::getTotalTargeters(square* squarePtr, char color)
+{
+	int total = 0;
+	for(int i=0;i<squarePtr->targeters_L;i++)
+	{
+		if(squarePtr->targeters[i]->color==color)
+			total++;
+	}
+	return total;
+}
+int Position::getTotalMovers(square* squarePtr, char color)
+{
+	int total = 0;
+	for(int i=0;i<squarePtr->moves_L;i++)
+	{
+		if(squarePtr->moves[i]->color==color)
+			total++;
+	}
+	return total;
+}
+char Position::getPieceColor(square* squarePtr)
+{
+	if(squarePtr->piecePtr==NULL)
+	{
+		return '\0';
+	}
+	else
+	{
+		return squarePtr->piecePtr->color;
+	}
+}
+Position::piece* Position::getKingPtr(char color)
+{
+	if(color=='w')
+	{
+		for(int i=0;i<MAX_PIECES;i++)
+		{
+			if(whitePieces[i].type=='k')
+				return &whitePieces[i];
+		}
+	}
+	if(color=='b')
+	{
+		for(int i=0;i<MAX_PIECES;i++)
+		{
+			if(blackPieces[i].type=='k')
+				return &blackPieces[i];
+		}
+	}
+	return NULL;
+}
+bool Position::instantEval_passedPawn(int8_t rank, char color, int j)
+{
+	bool passedPawn;
+	if(color=='w')
+	{
+		passedPawn=true;
+		for(int k=rank-1;k>0;k--)
+		{
+			if(onBoard(k,j-1))
+			{
+				if(getPieceColor(&theBoard[k][j-1])=='b')
+				{
+					if(theBoard[k][j-1].piecePtr->type=='p')
+					{
+						passedPawn = false;
+					}
+				}
+			}
+			if(onBoard(k,j+1))
+			{
+				if(getPieceColor(&theBoard[k][j+1])=='b')
+				{
+					if(theBoard[k][j+1].piecePtr->type=='p')
+					{
+						passedPawn = false;
+					}
+				}
+			}
+			if(getPieceColor(&theBoard[k][j])=='b')
+			{
+				if(theBoard[k][j].piecePtr->type=='p')
+				{
+					passedPawn = false;
+				}
+			}
+		}
+		return passedPawn;
+	}
+	else
+	{
+		passedPawn=true;
+		for(int k=rank+1;k<7;k++)
+		{
+			if(onBoard(k,j-1))
+			{
+				if(getPieceColor(&theBoard[k][j-1])=='w')
+				{
+					if(theBoard[k][j-1].piecePtr->type=='p')
+					{
+						passedPawn = false;
+					}
+				}
+			}
+			if(onBoard(k,j+1))
+			{
+				if(getPieceColor(&theBoard[k][j+1])=='w')
+				{
+					if(theBoard[k][j+1].piecePtr->type=='p')
+					{
+						passedPawn = false;
+					}
+				}
+			}
+			if(getPieceColor(&theBoard[k][j])=='w')
+			{
+				if(theBoard[k][j].piecePtr->type=='p')
+				{
+					passedPawn = false;
+				}
+			}
+		}
+		return passedPawn;
+	}
+}
+double Position::instantEval()
+{
+	double materialEval=0;
+	double positionEval=0;
+
+	if(positionState==positionstate_draw)
+		return 0;
+	if(positionState==positionstate_blackWin)
+		return -200;
+	if(positionState==positionstate_whiteWin)
+		return 200;
+	//Material
+	piece* currentPiece;
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		currentPiece = &whitePieces[i];
+		if(currentPiece->type=='\0')
+			continue;
+		if(currentPiece->type=='q')
+			materialEval=materialEval+9;
+		if(currentPiece->type=='r')
+			materialEval=materialEval+5;
+		if(currentPiece->type=='b')
+			materialEval=materialEval+3;
+		if(currentPiece->type=='n')
+			materialEval=materialEval+3;
+		if(currentPiece->type=='p')
+			materialEval=materialEval+1;
+	}
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		currentPiece = &blackPieces[i];
+		if(currentPiece->type=='\0')
+			continue;
+		if(currentPiece->type=='q')
+			materialEval=materialEval-9;
+		if(currentPiece->type=='r')
+			materialEval=materialEval-5;
+		if(currentPiece->type=='b')
+			materialEval=materialEval-3;
+		if(currentPiece->type=='n')
+			materialEval=materialEval-3;
+		if(currentPiece->type=='p')
+			materialEval=materialEval-1;
+	}
+	//Positional
+	int tempWhiteTargeters;
+	int tempBlackTargeters;
+	double pieceValue;
+	for(int i=0;i<8;i++)
+	{
+		for(int j=0;j<8;j++)
+		{
+			pieceValue=0;
+			tempWhiteTargeters=getTotalTargeters(&theBoard[i][j],'w');
+			tempBlackTargeters=getTotalTargeters(&theBoard[i][j],'b');
+			if(getPieceColor(&theBoard[i][j])!='\0')
+			{
+				if(theBoard[i][j].piecePtr->type=='q')
+					pieceValue=9;
+				else if(theBoard[i][j].piecePtr->type=='r')
+				{
+					pieceValue=5;
+				}
+				else if(theBoard[i][j].piecePtr->type=='b')
+				{
+					pieceValue=3;
+				}
+				else if(theBoard[i][j].piecePtr->type=='n')
+				{
+					pieceValue=3;
+				}
+				else if(theBoard[i][j].piecePtr->type=='p')
+				{
+					pieceValue=1;
+				}
+				else
+				{
+					pieceValue=0;
+				}
+			}
+			if(tempWhiteTargeters>tempBlackTargeters)
+			{
+				positionEval=positionEval+(pieceValue*PIECE_CONTROL_WEIGHT)+SQUARE_CONTROL_WEIGHT;
+			}
+			else if(tempWhiteTargeters<tempBlackTargeters)
+			{
+				positionEval=positionEval-(pieceValue*PIECE_CONTROL_WEIGHT)-SQUARE_CONTROL_WEIGHT;
+			}
+			if(tempWhiteTargeters>=tempBlackTargeters)
+			{
+				if(getPieceColor(&theBoard[i][j])=='w')
+				{
+					if(theBoard[i][j].piecePtr->type=='p')
+					{
+						if(i==5)
+						{
+							positionEval=positionEval+0.02;
+							if(instantEval_passedPawn(5,'w',j))
+								positionEval=positionEval+1;
+						}
+						else if(i==4)
+						{
+							positionEval=positionEval+0.08;
+							if(instantEval_passedPawn(4,'w',j))
+								positionEval=positionEval+1;
+						}
+						else if(i==3)
+						{
+							positionEval=positionEval+0.15;
+							if(instantEval_passedPawn(3,'w',j))
+								positionEval=positionEval+1;
+						}
+						else if(i==2)
+						{
+							positionEval=positionEval+0.5;
+							if(instantEval_passedPawn(2,'w',j))
+								positionEval=positionEval+1;
+						}
+						else if(i==1)
+						{
+							positionEval=positionEval+2;
+						}
+					}
+				}
+			}
+			if(tempWhiteTargeters<=tempBlackTargeters)
+			{
+				if(getPieceColor(&theBoard[i][j])=='b')
+				{
+					if(theBoard[i][j].piecePtr->type=='p')
+					{
+						if(i==2)
+						{
+							positionEval=positionEval-0.02;
+							if(instantEval_passedPawn(2,'b',j))
+								positionEval=positionEval-1;
+						}
+						else if(i==3)
+						{
+							positionEval=positionEval-0.08;
+							if(instantEval_passedPawn(3,'b',j))
+								positionEval=positionEval-1;
+						}
+						else if(i==4)
+						{
+							positionEval=positionEval-0.15;
+							if(instantEval_passedPawn(4,'b',j))
+								positionEval=positionEval-1;
+						}
+						else if(i==5)
+						{
+							positionEval=positionEval-0.5;
+							if(instantEval_passedPawn(5,'b',j))
+								positionEval=positionEval-1;
+						}
+						else if(i==6)
+						{
+							positionEval=positionEval-2;
+						}
+					}
+				}
+			}
+		}
+	}
+	return materialEval+positionEval;
+}
+
+
+//-Debug Information-
+void Position::printBoard()
+{
+	printf("\ta\tb\tc\td\te\tf\tg\th\n\n\n");
+	for(int i=0;i<8;i++)
+	{
+		printf("%d",8-i);
+		for(int j=0;j<8;j++)
+		{
+			if(theBoard[i][j].piecePtr==NULL)
+			{
+				printf("\t.");
+			}
+			else
+			{
+				if(theBoard[i][j].piecePtr->color=='w')
+				{
+					printf("\t%c",(char)std::toupper(theBoard[i][j].piecePtr->type));
+				}
+				else
+				{
+					printf("\t%c",theBoard[i][j].piecePtr->type);
+				}
+			}
+		}
+		printf("\n\n\n");
+	}
+}
+void Position::printStats()
+{
+	printf("Color To Move: %c\n",colorToMove);
+	printf("Castling Flags: [%d,%d,%d,%d]\n",castlingFlags[kingside_white],castlingFlags[queenside_white],castlingFlags[kingside_black],castlingFlags[queenside_black]);
+	printf("Can Castle: [%d,%d,%d,%d]\n",canCastle[kingside_white],canCastle[queenside_white],canCastle[kingside_black],canCastle[queenside_black]);
+	printf("En Passant: (%d,%d)\n",enPassantRank,enPassantFile);
+	printf("Fifty Move Rule Counter: %d\n",fiftyMoveRuleCounter);
+	printf("Move: %d\n",moveCounter);
+}
+void Position::printAllTargets()
+{
+	piece* currentPiecePtr;
+	char type;
+	char rank;
+	char file;
+	printf("\n-------White Pieces-------\n");
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		if(whitePieces[i].type=='\0')
+			continue;
+		currentPiecePtr = &whitePieces[i];
+		type = (char)std::toupper(currentPiecePtr->type);
+		rank = engineRank_TO_notationRank(currentPiecePtr->rank);
+		file = engineFile_TO_notationFile(currentPiecePtr->file);
+		printf("\twhitePieces[%d]: %c%c%c\n",i,type,file,rank);
+		for(int j=0;j<currentPiecePtr->targets_L;j++)
+		{
+			rank = engineRank_TO_notationRank(currentPiecePtr->targets[j]->rank);
+			file = engineFile_TO_notationFile(currentPiecePtr->targets[j]->file);
+			printf("\t\ttargets[%d]: %c%c\n",j,file,rank);
+		}
+	}
+	printf("\n-------Black Pieces-------\n");
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		if(whitePieces[i].type=='\0')
+			continue;
+		currentPiecePtr = &blackPieces[i];
+		type = currentPiecePtr->type;
+		rank = engineRank_TO_notationRank(currentPiecePtr->rank);
+		file = engineFile_TO_notationFile(currentPiecePtr->file);
+		printf("\tblackPieces[%d]: %c%c%c\n",i,type,file,rank);
+		for(int j=0;j<currentPiecePtr->targets_L;j++)
+		{
+			rank = engineRank_TO_notationRank(currentPiecePtr->targets[j]->rank);
+			file = engineFile_TO_notationFile(currentPiecePtr->targets[j]->file);
+			printf("\t\ttargets[%d]: %c%c\n",j,file,rank);
+		}
+	}
+}
+void Position::printAllMoves()
+{
+	piece* currentPiecePtr;
+	char type;
+	char rank;
+	char file;
+	printf("\n-------White Pieces-------\n");
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		if(whitePieces[i].type=='\0')
+			continue;
+		currentPiecePtr = &whitePieces[i];
+		type = (char)std::toupper(currentPiecePtr->type);
+		rank = engineRank_TO_notationRank(currentPiecePtr->rank);
+		file = engineFile_TO_notationFile(currentPiecePtr->file);
+		printf("\twhitePieces[%d]: %c%c%c\n",i,type,file,rank);
+		for(int j=0;j<currentPiecePtr->moves_L;j++)
+		{
+			rank = engineRank_TO_notationRank(currentPiecePtr->moves[j]->rank);
+			file = engineFile_TO_notationFile(currentPiecePtr->moves[j]->file);
+			printf("\t\tmoves[%d]: %c%c\n",j,file,rank);
+		}
+	}
+	printf("\n-------Black Pieces-------\n");
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		if(whitePieces[i].type=='\0')
+			continue;
+		currentPiecePtr = &blackPieces[i];
+		type = currentPiecePtr->type;
+		rank = engineRank_TO_notationRank(currentPiecePtr->rank);
+		file = engineFile_TO_notationFile(currentPiecePtr->file);
+		printf("\tblackPieces[%d]: %c%c%c\n",i,type,file,rank);
+		for(int j=0;j<currentPiecePtr->moves_L;j++)
+		{
+			rank = engineRank_TO_notationRank(currentPiecePtr->moves[j]->rank);
+			file = engineFile_TO_notationFile(currentPiecePtr->moves[j]->file);
+			printf("\t\tmoves[%d]: %c%c\n",j,file,rank);
+		}
+	}
+}
+
+//-Utility-
+bool Position::onBoard(int8_t rank, int8_t file)
+{
+	if(rank>=0 && rank<8 && file>=0 && file<8)
+		return true;
+	return false;
+}
+
 
 void Position::setupMemory()
 {
@@ -1298,31 +1840,34 @@ void Position::cleanupMemory()
 
 void Position::sanityCheck()
 {
-	
+
 }
 
 //-Position Calculation-
-void Position::resolve_targets_whiteKing(piece* kingPtr, int8_t rank, int8_t file)
+void Position::resolve_targets_king(piece* kingPtr, int8_t rank, int8_t file)
 {
 	if(onBoard(rank,file))
 	{
 		pushTarget(kingPtr,&theBoard[rank][file]);
-		//if square has no black targeters and is not occupied by the same color piece then assume the king can move there
-		if(getTotalTargeters(&theBoard[rank][file],'b')==0 && getPieceColor(&theBoard[rank][file])!='w')
-		{
-			pushMove(kingPtr,&theBoard[rank][file]);
-		}
 	}
 }
-void Position::resolve_targets_blackKing(piece* kingPtr, int8_t rank, int8_t file)
+void Position::resolve_targets_scan(piece* currentPiecePtr, int8_t startingRank, int8_t startingFile, int rankDirection, int fileDirection)
 {
-	if(onBoard(rank,file))
+	int currentRank;
+	int currentFile;
+	for(int i=1;i<8 && onBoard(startingRank+(rankDirection*i),startingFile+(fileDirection*i));i++)
 	{
-		pushTarget(kingPtr,&theBoard[rank][file]);
-		//if square has no white targeters and is not occupied by the same color piece then assume the king can move there
-		if(getTotalTargeters(&theBoard[rank][file],'w')==0 && getPieceColor(&theBoard[rank][file])!='b')
+		currentRank = startingRank+(rankDirection*i);
+		currentFile = startingFile+(fileDirection*i);
+		pushTarget(currentPiecePtr,&theBoard[currentRank][currentFile]);
+		if(theBoard[currentRank][currentFile].piecePtr!=NULL) //if there is a piece on this square stop scanning
 		{
-			pushMove(kingPtr,&theBoard[rank][file]);
+			if(theBoard[currentRank][currentFile].piecePtr->type!='k' ||
+			theBoard[currentRank][currentFile].piecePtr->color==theBoard[startingRank][startingFile].piecePtr->color)
+			//if on this scan line the scan hits the king of opposite color then we can 'act' as though this piece will target square behind the enemy king
+			{
+				break;
+			}
 		}
 	}
 }
@@ -1344,92 +1889,36 @@ void Position::resolve_targets(char color)
 			if(type=='k')
 			{
 				//add target and moveTarget squares for king (total 8)
-				resolve_targets_whiteKing(currentPiecePtr,rank-1,file-1);
-				resolve_targets_whiteKing(currentPiecePtr,rank-1,file);
-				resolve_targets_whiteKing(currentPiecePtr,rank-1,file+1);
-				resolve_targets_whiteKing(currentPiecePtr,rank,file-1);
-				resolve_targets_whiteKing(currentPiecePtr,rank,file+1);
-				resolve_targets_whiteKing(currentPiecePtr,rank+1,file-1);
-				resolve_targets_whiteKing(currentPiecePtr,rank+1,file);
-				resolve_targets_whiteKing(currentPiecePtr,rank+1,file+1);
+				resolve_targets_king(currentPiecePtr,rank-1,file-1);
+				resolve_targets_king(currentPiecePtr,rank-1,file);
+				resolve_targets_king(currentPiecePtr,rank-1,file+1);
+				resolve_targets_king(currentPiecePtr,rank,file-1);
+				resolve_targets_king(currentPiecePtr,rank,file+1);
+				resolve_targets_king(currentPiecePtr,rank+1,file-1);
+				resolve_targets_king(currentPiecePtr,rank+1,file);
+				resolve_targets_king(currentPiecePtr,rank+1,file+1);
 			}
 			if(type=='r'||type=='q')
 			{
 				//scan down
-				for(int i=1;i<8 && (rank+i<8);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank+i][file]);
-					if(theBoard[rank+i][file].piecePtr!=NULL)
-					{
-						break; //if there is a piece on this square stop scanning
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,1,0);
 				//scan up
-				for(int i=1;i<8 && (rank-i>=0);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank-i][file]);
-					if(theBoard[rank-i][file].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,-1,0);
 				//scan right
-				for(int i=1;i<8 && (file+i<8);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank][file+i]);
-					if(theBoard[rank][file+i].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,0,1);
 				//scan left
-				for(int i=1;i<8 && (file-i>=0);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank][file-i]);
-					if(theBoard[rank][file-i].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,0,-1);
 			}
 			if(type=='b'||type=='q')
 			{
 				//scan southeast
-				for(int i=1;i<8 && (rank+i<8 && file+i<8);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank+i][file+i]);
-					if(theBoard[rank+i][file+i].piecePtr!=NULL)
-					{
-						break; //if there is a piece on this square stop scanning
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,1,1);
 				//scan southwest
-				for(int i=1;i<8 && (rank+i<8 && file-i>=0);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank+i][file-i]);
-					if(theBoard[rank+i][file-i].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,1,-1);
 				//scan northeast
-				for(int i=1;i<8 && (rank-i>=0 && file+i<8);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank-i][file+i]);
-					if(theBoard[rank-i][file+i].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,-1,1);
 				//scan northwest
-				for(int i=1;i<8 && (rank-i>=0 && file-i>=0);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank-i][file-i]);
-					if(theBoard[rank-i][file-i].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,-1,-1);
 			}
 			if(type=='n')
 			{
@@ -1481,7 +1970,7 @@ void Position::resolve_targets(char color)
 			}
 		}
 	}
-	
+
 	if(color=='b')
 	{
 	//Black
@@ -1497,92 +1986,36 @@ void Position::resolve_targets(char color)
 			if(type=='k')
 			{
 				//add target and moveTarget squares for king (total 8)
-				resolve_targets_blackKing(currentPiecePtr,rank-1,file-1);
-				resolve_targets_blackKing(currentPiecePtr,rank-1,file);
-				resolve_targets_blackKing(currentPiecePtr,rank-1,file+1);
-				resolve_targets_blackKing(currentPiecePtr,rank,file-1);
-				resolve_targets_blackKing(currentPiecePtr,rank,file+1);
-				resolve_targets_blackKing(currentPiecePtr,rank+1,file-1);
-				resolve_targets_blackKing(currentPiecePtr,rank+1,file);
-				resolve_targets_blackKing(currentPiecePtr,rank+1,file+1);
+				resolve_targets_king(currentPiecePtr,rank-1,file-1);
+				resolve_targets_king(currentPiecePtr,rank-1,file);
+				resolve_targets_king(currentPiecePtr,rank-1,file+1);
+				resolve_targets_king(currentPiecePtr,rank,file-1);
+				resolve_targets_king(currentPiecePtr,rank,file+1);
+				resolve_targets_king(currentPiecePtr,rank+1,file-1);
+				resolve_targets_king(currentPiecePtr,rank+1,file);
+				resolve_targets_king(currentPiecePtr,rank+1,file+1);
 			}
 			if(type=='r'||type=='q')
 			{
 				//scan down
-				for(int i=1;i<8 && (rank+i<8);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank+i][file]);
-					if(theBoard[rank+i][file].piecePtr!=NULL)
-					{
-						break; //if there is a piece on this square stop scanning
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,1,0);
 				//scan up
-				for(int i=1;i<8 && (rank-i>=0);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank-i][file]);
-					if(theBoard[rank-i][file].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,-1,0);
 				//scan right
-				for(int i=1;i<8 && (file+i<8);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank][file+i]);
-					if(theBoard[rank][file+i].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,0,1);
 				//scan left
-				for(int i=1;i<8 && (file-i>=0);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank][file-i]);
-					if(theBoard[rank][file-i].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,0,-1);
 			}
 			if(type=='b'||type=='q')
 			{
 				//scan southeast
-				for(int i=1;i<8 && (rank+i<8 && file+i<8);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank+i][file+i]);
-					if(theBoard[rank+i][file+i].piecePtr!=NULL)
-					{
-						break; //if there is a piece on this square stop scanning
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,1,1);
 				//scan southwest
-				for(int i=1;i<8 && (rank+i<8 && file-i>=0);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank+i][file-i]);
-					if(theBoard[rank+i][file-i].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,1,-1);
 				//scan northeast
-				for(int i=1;i<8 && (rank-i>=0 && file+i<8);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank-i][file+i]);
-					if(theBoard[rank-i][file+i].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,-1,1);
 				//scan northwest
-				for(int i=1;i<8 && (rank-i>=0 && file-i>=0);i++)
-				{
-					pushTarget(currentPiecePtr,&theBoard[rank-i][file-i]);
-					if(theBoard[rank-i][file-i].piecePtr!=NULL)
-					{
-						break; 
-					}
-				}
+				resolve_targets_scan(currentPiecePtr,rank,file,-1,-1);
 			}
 			if(type=='n')
 			{
@@ -1625,562 +2058,176 @@ void Position::resolve_targets(char color)
 				//add target squares for pawn
 				if(onBoard(rank+1,file-1))
 				{
-					pushTarget(currentPiecePtr,&theBoard[rank-1][file-1]);
+					pushTarget(currentPiecePtr,&theBoard[rank+1][file-1]);
 				}
 				if(onBoard(rank+1,file+1))
 				{
-					pushTarget(currentPiecePtr,&theBoard[rank-1][file+1]);
+					pushTarget(currentPiecePtr,&theBoard[rank+1][file+1]);
 				}
+			}
+		}
+	}
+}
+void Position::resolve_pins_scan(piece* kingPtr, int rankDirection, int fileDirection)
+{
+	piece* tempSavedPiecePtr = NULL;
+	square* currentSquarePtr = NULL;
+	bool pieceIsSaved = false;
+	char kingColor = kingPtr->color;
+	int8_t kingRank = kingPtr->rank;
+	int8_t kingFile = kingPtr->file;
+
+	for(int i=1;i<8 && onBoard(kingRank+(rankDirection*i),kingFile+(fileDirection*i));i++)
+	{
+		currentSquarePtr = &theBoard[kingRank+(rankDirection*i)][kingFile+(fileDirection*i)];
+		if(!pieceIsSaved)
+		{
+			if(currentSquarePtr->piecePtr!=NULL)
+			{
+				if(currentSquarePtr->piecePtr->color==kingColor)
+				{
+					tempSavedPiecePtr = currentSquarePtr->piecePtr;
+					pieceIsSaved = true;
+				}
+				else
+					break;
+			}
+		}
+		else
+		{
+			if(currentSquarePtr->piecePtr!=NULL)
+			{
+				if(currentSquarePtr->piecePtr->color!=kingColor)
+				{
+					if(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r')
+					{
+						if((rankDirection==1 || rankDirection==-1) && (fileDirection==0)) //file pin
+						{
+							tempSavedPiecePtr->pinned[pin_file]=true;
+							break;
+						}
+						else if((fileDirection==1 || fileDirection==-1) && (rankDirection==0)) //rank pin
+						{
+							tempSavedPiecePtr->pinned[pin_rank]=true;
+							break;
+						}
+					}
+					if(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b')
+					{
+						if((rankDirection==1 && fileDirection==1) || (rankDirection==-1 && fileDirection==-1)) //positive diagonal pin
+						{
+							tempSavedPiecePtr->pinned[pin_positiveDiag]=true;
+							break;
+						}
+						else if((rankDirection==1 && fileDirection==-1) || (rankDirection==-1 && fileDirection==1)) //negative diagonal pin
+						{
+							tempSavedPiecePtr->pinned[pin_negativeDiag]=true;
+							break;
+						}
+					}
+				}
+				else
+					break;
 			}
 		}
 	}
 }
 void Position::resolve_pins(char color)
 {
-	piece* tempSavedPiecePtr;
-	square* currentSquarePtr;
-	bool pieceIsSaved = false;
 	if(color=='w')
 	{
 		piece* whiteKingPtr = getKingPtr('w');
-		int8_t whiteKR = whiteKingPtr->rank;
-		int8_t whiteKF = whiteKingPtr->file;
 		//scan down
-		for(int i=1;i<8 && (whiteKR+i<8);i++)
-		{
-			currentSquarePtr = &theBoard[whiteKR+i][whiteKF];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(whiteKingPtr,1,0);
 		//scan up
-		for(int i=1;i<8 && (whiteKR-i>=0);i++)
-		{
-			currentSquarePtr = &theBoard[whiteKR-i][whiteKF];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(whiteKingPtr,-1,0);
 		//scan right
-		for(int i=1;i<8 && (whiteKF+i<8);i++)
-		{
-			currentSquarePtr = &theBoard[whiteKR][whiteKF+i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(whiteKingPtr,0,1);
 		//scan left
-		for(int i=1;i<8 && (whiteKF-i>=0);i++)
-		{
-			currentSquarePtr = &theBoard[whiteKR][whiteKF-i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(whiteKingPtr,0,-1);
 		//scan southeast
-		for(int i=1;i<8 && (whiteKR+i<8 && whiteKF+i<8);i++)
-		{
-			currentSquarePtr = &theBoard[whiteKR+i][whiteKF+i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(whiteKingPtr,1,1);
 		//scan southwest
-		for(int i=1;i<8 && (whiteKR+i<8 && whiteKF-i>=0);i++)
-		{
-			currentSquarePtr = &theBoard[whiteKR+i][whiteKF-i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(whiteKingPtr,1,-1);
 		//scan northeast
-		for(int i=1;i<8 && (whiteKR-i>=0 && whiteKF+i<8);i++)
-		{
-			currentSquarePtr = &theBoard[whiteKR-i][whiteKF+i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(whiteKingPtr,-1,1);
 		//scan northwest
-		for(int i=1;i<8 && (whiteKR-i>=0 && whiteKF-i>=0);i++)
-		{
-			currentSquarePtr = &theBoard[whiteKR-i][whiteKF-i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(whiteKingPtr,-1,-1);
 	}
 	if(color=='b')
 	{
-		piece* blackKingPtr = getKingPtr('w');
-		int8_t blackKR = blackKingPtr->rank;
-		int8_t blackKF = blackKingPtr->file;
+		piece* blackKingPtr = getKingPtr('b');
 		//scan down
-		for(int i=1;i<8 && (blackKR+i<8);i++)
-		{
-			currentSquarePtr = &theBoard[blackKR+i][blackKF];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(blackKingPtr,1,0);
 		//scan up
-		for(int i=1;i<8 && (blackKR-i>=0);i++)
-		{
-			currentSquarePtr = &theBoard[blackKR-i][blackKF];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(blackKingPtr,-1,0);
 		//scan right
-		for(int i=1;i<8 && (blackKF+i<8);i++)
-		{
-			currentSquarePtr = &theBoard[blackKR][blackKF+i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(blackKingPtr,0,1);
 		//scan left
-		for(int i=1;i<8 && (blackKF-i>=0);i++)
-		{
-			currentSquarePtr = &theBoard[blackKR][blackKF-i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(blackKingPtr,0,-1);
 		//scan southeast
-		for(int i=1;i<8 && (blackKR+i<8 && blackKF+i<8);i++)
-		{
-			currentSquarePtr = &theBoard[blackKR+i][blackKF+i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(blackKingPtr,1,1);
 		//scan southwest
-		for(int i=1;i<8 && (blackKR+i<8 && blackKF-i>=0);i++)
-		{
-			currentSquarePtr = &theBoard[blackKR+i][blackKF-i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(blackKingPtr,1,-1);
 		//scan northeast
-		for(int i=1;i<8 && (blackKR-i>=0 && blackKF+i<8);i++)
-		{
-			currentSquarePtr = &theBoard[blackKR-i][blackKF+i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(blackKingPtr,-1,1);
 		//scan northwest
-		for(int i=1;i<8 && (blackKR-i>=0 && blackKF-i>=0);i++)
-		{
-			currentSquarePtr = &theBoard[blackKR-i][blackKF-i];
-			if(!pieceIsSaved)
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='b')
-					{
-						tempSavedPiecePtr = currentSquarePtr->piecePtr;
-						pieceIsSaved = true;
-					}
-					else
-						break;
-				}
-			}
-			else
-			{
-				if(currentSquarePtr->piecePtr!=NULL)
-				{
-					if(currentSquarePtr->piecePtr->color=='w' &&
-					(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b'))
-					{
-						tempSavedPiecePtr->pinned[pin_file];
-					}
-					else
-						break;
-				}
-			}
-		}
-		tempSavedPiecePtr = NULL;
-		pieceIsSaved = false;
+		resolve_pins_scan(blackKingPtr,-1,-1);
 	}
-	
+
+}
+
+void Position::resolve_moves_whiteKing(piece* kingPtr, int8_t rank, int8_t file)
+{
+	if(onBoard(rank,file))
+	{
+		//if square has no black targeters and is not occupied by the same color piece then assume the king can move there
+		if(getTotalTargeters(&theBoard[rank][file],'b')==0 && getPieceColor(&theBoard[rank][file])!='w')
+		{
+			pushMove(kingPtr,&theBoard[rank][file]);
+		}
+	}
+}
+void Position::resolve_moves_blackKing(piece* kingPtr, int8_t rank, int8_t file)
+{
+	if(onBoard(rank,file))
+	{
+		//if square has no white targeters and is not occupied by the same color piece then assume the king can move there
+		if(getTotalTargeters(&theBoard[rank][file],'w')==0 && getPieceColor(&theBoard[rank][file])!='b')
+		{
+			pushMove(kingPtr,&theBoard[rank][file]);
+		}
+	}
+}
+void Position::resolve_moves_knight(piece* currentPiecePtr, int rankOffset, int fileOffset)
+{
+	char pieceColor = currentPiecePtr->color;
+	int8_t startingRank = currentPiecePtr->rank;
+	int8_t startingFile = currentPiecePtr->file;
+	if(onBoard(startingRank+rankOffset,startingFile+fileOffset))
+	{
+		if(getPieceColor(&theBoard[startingRank+rankOffset][startingFile+fileOffset])!=pieceColor)
+		{
+			pushMove(currentPiecePtr,&theBoard[startingRank+rankOffset][startingFile+fileOffset]);
+		}
+	}
+}
+void Position::resolve_moves_scan(piece* currentPiecePtr, int8_t startingRank, int8_t startingFile, int rankDirection, int fileDirection)
+{
+	int currentRank;
+	int currentFile;
+	char pieceColor = currentPiecePtr->color;
+	for(int i=1;i<8 && onBoard(startingRank+(rankDirection*i),startingFile+(fileDirection*i));i++)
+	{
+		currentRank = startingRank+(rankDirection*i);
+		currentFile = startingFile+(fileDirection*i);
+		if(getPieceColor(&theBoard[currentRank][currentFile])!=pieceColor)
+			pushMove(currentPiecePtr,&theBoard[currentRank][currentFile]);
+		if(theBoard[currentRank][currentFile].piecePtr!=NULL)
+		{
+			break; //if there is a piece on this square stop scanning
+		}
+	}
 }
 void Position::resolve_moves(char color)
 {
@@ -2197,102 +2244,50 @@ void Position::resolve_moves(char color)
 			int8_t rank = currentPiecePtr->rank;
 			int8_t file = currentPiecePtr->file;
 			//update all moves and moves depending on piece type
+			if(type=='k')
+			{
+				//add target and moveTarget squares for king (total 8)
+				resolve_moves_whiteKing(currentPiecePtr,rank-1,file-1);
+				resolve_moves_whiteKing(currentPiecePtr,rank-1,file);
+				resolve_moves_whiteKing(currentPiecePtr,rank-1,file+1);
+				resolve_moves_whiteKing(currentPiecePtr,rank,file-1);
+				resolve_moves_whiteKing(currentPiecePtr,rank,file+1);
+				resolve_moves_whiteKing(currentPiecePtr,rank+1,file-1);
+				resolve_moves_whiteKing(currentPiecePtr,rank+1,file);
+				resolve_moves_whiteKing(currentPiecePtr,rank+1,file+1);
+			}
 			if(type=='r'||type=='q')
 			{
 				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
 				{
 					//scan down
-					for(int i=1;i<8 && (rank+i<8);i++)
-					{
-						if(getPieceColor(&theBoard[rank+i][file])!='w')
-							pushMove(currentPiecePtr,&theBoard[rank+i][file]);
-						if(theBoard[rank+i][file].piecePtr!=NULL)
-						{
-							break; //if there is a piece on this square stop scanning
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,1,0);
 					//scan up
-					for(int i=1;i<8 && (rank-i>=0);i++)
-					{
-						if(getPieceColor(&theBoard[rank-i][file])!='w')
-							pushMove(currentPiecePtr,&theBoard[rank-i][file]);
-						if(theBoard[rank-i][file].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,-1,0);
 				}
 				if(!currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
 				{
 					//scan right
-					for(int i=1;i<8 && (file+i<8);i++)
-					{
-						if(getPieceColor(&theBoard[rank][file+i])!='w')
-							pushMove(currentPiecePtr,&theBoard[rank][file+i]);
-						if(theBoard[rank][file+i].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,0,1);
 					//scan left
-					for(int i=1;i<8 && (file-i>=0);i++)
-					{
-						if(getPieceColor(&theBoard[rank][file-i])!='w')
-							pushMove(currentPiecePtr,&theBoard[rank][file-i]);
-						if(theBoard[rank][file-i].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,0,-1);
 				}
 			}
 			if(type=='b'||type=='q')
 			{
-				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
-				{
-					//scan southeast
-					for(int i=1;i<8 && (rank+i<8 && file+i<8);i++)
-					{
-						if(getPieceColor(&theBoard[rank+i][file+i])!='w')
-							pushMove(currentPiecePtr,&theBoard[rank+i][file+i]);
-						if(theBoard[rank+i][file+i].piecePtr!=NULL)
-						{
-							break; //if there is a piece on this square stop scanning
-						}
-					}
-					//scan northwest
-					for(int i=1;i<8 && (rank-i>=0 && file-i>=0);i++)
-					{
-						if(getPieceColor(&theBoard[rank-i][file-i])!='w')
-							pushMove(currentPiecePtr,&theBoard[rank-i][file-i]);
-						if(theBoard[rank-i][file-i].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
-				}
 				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
 				{
+					//scan southeast
+					resolve_moves_scan(currentPiecePtr,rank,file,1,1);
+					//scan northwest
+					resolve_moves_scan(currentPiecePtr,rank,file,-1,-1);
+				}
+				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+				{
 					//scan southwest
-					for(int i=1;i<8 && (rank+i<8 && file-i>=0);i++)
-					{
-						if(getPieceColor(&theBoard[rank+i][file-i])!='w')
-							pushMove(currentPiecePtr,&theBoard[rank+i][file-i]);
-						if(theBoard[rank+i][file-i].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,1,-1);
 					//scan northeast
-					for(int i=1;i<8 && (rank-i>=0 && file+i<8);i++)
-					{
-						if(getPieceColor(&theBoard[rank-i][file+i])!='w')
-							pushMove(currentPiecePtr,&theBoard[rank-i][file+i]);
-						if(theBoard[rank-i][file+i].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,-1,1);
 				}
 			}
 			if(type=='n')
@@ -2300,67 +2295,19 @@ void Position::resolve_moves(char color)
 				//add moves for knight
 				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag] && !currentPiecePtr->pinned[pin_negativeDiag])
 				{
-					if(onBoard(rank-2,file-1))
-					{
-						if(getPieceColor(&theBoard[rank-2][file-1])!='w')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank-2][file-1]);
-						}
-					}
-					if(onBoard(rank-1,file-2))
-					{
-						if(getPieceColor(&theBoard[rank-1][file-2])!='w')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank-1][file-2]);
-						}
-					}
-					if(onBoard(rank-2,file+1))
-					{
-						if(getPieceColor(&theBoard[rank-2][file+1])!='w')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank-2][file+1]);
-						}
-					}
-					if(onBoard(rank-1,file+2))
-					{
-						if(getPieceColor(&theBoard[rank-1][file+2])!='w')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank-1][file+2]);
-						}
-					}
-					if(onBoard(rank+2,file-1))
-					{
-						if(getPieceColor(&theBoard[rank+2][file-1])!='w')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank+2][file-1]);
-						}
-					}
-					if(onBoard(rank+1,file-2))
-					{
-						if(getPieceColor(&theBoard[rank+1][file-2])!='w')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank+1][file-2]);
-						}
-					}
-					if(onBoard(rank+2,file+1))
-					{
-						if(getPieceColor(&theBoard[rank+2][file+1])!='w')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank+2][file+1]);
-						}
-					}
-					if(onBoard(rank+1,file+2))
-					{
-						if(getPieceColor(&theBoard[rank+1][file+2])!='w')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank+1][file+2]);
-						}
-					}
+					resolve_moves_knight(currentPiecePtr,-2,-1);
+					resolve_moves_knight(currentPiecePtr,-1,-2);
+					resolve_moves_knight(currentPiecePtr,-2,1);
+					resolve_moves_knight(currentPiecePtr,-1,2);
+					resolve_moves_knight(currentPiecePtr,2,-1);
+					resolve_moves_knight(currentPiecePtr,1,-2);
+					resolve_moves_knight(currentPiecePtr,2,1);
+					resolve_moves_knight(currentPiecePtr,1,2);
 				}
 			}
 			if(type=='p')
 			{
-				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
 				{
 					if(onBoard(rank-1,file-1))
 					{
@@ -2371,7 +2318,7 @@ void Position::resolve_moves(char color)
 						}
 					}
 				}
-				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
+				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
 				{
 					if(onBoard(rank-1,file+1))
 					{
@@ -2411,102 +2358,50 @@ void Position::resolve_moves(char color)
 			int8_t rank = currentPiecePtr->rank;
 			int8_t file = currentPiecePtr->file;
 			//update all moves and moves depending on piece type
+			if(type=='k')
+			{
+				//add target and moveTarget squares for king (total 8)
+				resolve_moves_blackKing(currentPiecePtr,rank-1,file-1);
+				resolve_moves_blackKing(currentPiecePtr,rank-1,file);
+				resolve_moves_blackKing(currentPiecePtr,rank-1,file+1);
+				resolve_moves_blackKing(currentPiecePtr,rank,file-1);
+				resolve_moves_blackKing(currentPiecePtr,rank,file+1);
+				resolve_moves_blackKing(currentPiecePtr,rank+1,file-1);
+				resolve_moves_blackKing(currentPiecePtr,rank+1,file);
+				resolve_moves_blackKing(currentPiecePtr,rank+1,file+1);
+			}
 			if(type=='r'||type=='q')
 			{
 				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
 				{
 					//scan down
-					for(int i=1;i<8 && (rank+i<8);i++)
-					{
-						if(getPieceColor(&theBoard[rank+i][file])!='b')
-							pushMove(currentPiecePtr,&theBoard[rank+i][file]);
-						if(theBoard[rank+i][file].piecePtr!=NULL)
-						{
-							break; //if there is a piece on this square stop scanning
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,1,0);
 					//scan up
-					for(int i=1;i<8 && (rank-i>=0);i++)
-					{
-						if(getPieceColor(&theBoard[rank-i][file])!='b')
-							pushMove(currentPiecePtr,&theBoard[rank-i][file]);
-						if(theBoard[rank-i][file].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,-1,0);
 				}
 				if(!currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
 				{
 					//scan right
-					for(int i=1;i<8 && (file+i<8);i++)
-					{
-						if(getPieceColor(&theBoard[rank][file+i])!='b')
-							pushMove(currentPiecePtr,&theBoard[rank][file+i]);
-						if(theBoard[rank][file+i].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,0,1);
 					//scan left
-					for(int i=1;i<8 && (file-i>=0);i++)
-					{
-						if(getPieceColor(&theBoard[rank][file-i])!='b')
-							pushMove(currentPiecePtr,&theBoard[rank][file-i]);
-						if(theBoard[rank][file-i].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,0,-1);
 				}
 			}
 			if(type=='b'||type=='q')
 			{
-				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
-				{
-					//scan southeast
-					for(int i=1;i<8 && (rank+i<8 && file+i<8);i++)
-					{
-						if(getPieceColor(&theBoard[rank+i][file+i])!='b')
-							pushMove(currentPiecePtr,&theBoard[rank+i][file+i]);
-						if(theBoard[rank+i][file+i].piecePtr!=NULL)
-						{
-							break; //if there is a piece on this square stop scanning
-						}
-					}
-					//scan northwest
-					for(int i=1;i<8 && (rank-i>=0 && file-i>=0);i++)
-					{
-						if(getPieceColor(&theBoard[rank-i][file-i])!='b')
-							pushMove(currentPiecePtr,&theBoard[rank-i][file-i]);
-						if(theBoard[rank-i][file-i].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
-				}
 				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
 				{
+					//scan southeast
+					resolve_moves_scan(currentPiecePtr,rank,file,1,1);
+					//scan northwest
+					resolve_moves_scan(currentPiecePtr,rank,file,-1,-1);
+				}
+				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+				{
 					//scan southwest
-					for(int i=1;i<8 && (rank+i<8 && file-i>=0);i++)
-					{
-						if(getPieceColor(&theBoard[rank+i][file-i])!='b')
-							pushMove(currentPiecePtr,&theBoard[rank+i][file-i]);
-						if(theBoard[rank+i][file-i].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,1,-1);
 					//scan northeast
-					for(int i=1;i<8 && (rank-i>=0 && file+i<8);i++)
-					{
-						if(getPieceColor(&theBoard[rank-i][file+i])!='b')
-							pushMove(currentPiecePtr,&theBoard[rank-i][file+i]);
-						if(theBoard[rank-i][file+i].piecePtr!=NULL)
-						{
-							break; 
-						}
-					}
+					resolve_moves_scan(currentPiecePtr,rank,file,-1,1);
 				}
 			}
 			if(type=='n')
@@ -2514,62 +2409,14 @@ void Position::resolve_moves(char color)
 				//add moves for knight
 				if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag] && !currentPiecePtr->pinned[pin_negativeDiag])
 				{
-					if(onBoard(rank-2,file-1))
-					{
-						if(getPieceColor(&theBoard[rank-2][file-1])!='b')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank-2][file-1]);
-						}
-					}
-					if(onBoard(rank-1,file-2))
-					{
-						if(getPieceColor(&theBoard[rank-1][file-2])!='b')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank-1][file-2]);
-						}
-					}
-					if(onBoard(rank-2,file+1))
-					{
-						if(getPieceColor(&theBoard[rank-2][file+1])!='b')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank-2][file+1]);
-						}
-					}
-					if(onBoard(rank-1,file+2))
-					{
-						if(getPieceColor(&theBoard[rank-1][file+2])!='b')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank-1][file+2]);
-						}
-					}
-					if(onBoard(rank+2,file-1))
-					{
-						if(getPieceColor(&theBoard[rank+2][file-1])!='b')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank+2][file-1]);
-						}
-					}
-					if(onBoard(rank+1,file-2))
-					{
-						if(getPieceColor(&theBoard[rank+1][file-2])!='b')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank+1][file-2]);
-						}
-					}
-					if(onBoard(rank+2,file+1))
-					{
-						if(getPieceColor(&theBoard[rank+2][file+1])!='b')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank+2][file+1]);
-						}
-					}
-					if(onBoard(rank+1,file+2))
-					{
-						if(getPieceColor(&theBoard[rank+1][file+2])!='b')
-						{
-							pushMove(currentPiecePtr,&theBoard[rank+1][file+2]);
-						}
-					}
+					resolve_moves_knight(currentPiecePtr,-2,-1);
+					resolve_moves_knight(currentPiecePtr,-1,-2);
+					resolve_moves_knight(currentPiecePtr,-2,1);
+					resolve_moves_knight(currentPiecePtr,-1,2);
+					resolve_moves_knight(currentPiecePtr,2,-1);
+					resolve_moves_knight(currentPiecePtr,1,-2);
+					resolve_moves_knight(currentPiecePtr,2,1);
+					resolve_moves_knight(currentPiecePtr,1,2);
 				}
 			}
 			if(type=='p')
@@ -2614,16 +2461,727 @@ void Position::resolve_moves(char color)
 		}
 	}
 }
+bool Position::resolve_movesInCheck_blocksCheck(const piece* kingPtr, const piece* checkingPiecePtr, int8_t endRank, int8_t endFile)
+{
+	if(checkingPiecePtr->type=='r'||checkingPiecePtr->type=='q')
+	{
+		if(kingPtr->rank==checkingPiecePtr->rank)
+		{
+			if(kingPtr->file>checkingPiecePtr->file && endFile>checkingPiecePtr->file && endFile<kingPtr->file && endRank==kingPtr->rank)
+			{
+				return true;
+			}
+			if(kingPtr->file<checkingPiecePtr->file && endFile<checkingPiecePtr->file && endFile>kingPtr->file && endRank==kingPtr->rank)
+			{
+				return true;
+			}
+		}
+		else if(kingPtr->file==checkingPiecePtr->file)
+		{
+			if(kingPtr->rank>checkingPiecePtr->rank && endRank>checkingPiecePtr->rank && endRank<kingPtr->rank && endFile==kingPtr->file)
+			{
+				return true;
+			}
+			if(kingPtr->rank<checkingPiecePtr->rank && endRank<checkingPiecePtr->rank && endRank>kingPtr->rank && endFile==kingPtr->file)
+			{
+				return true;
+			}
+		}
+	}
+	if(checkingPiecePtr->type=='b'||checkingPiecePtr->type=='q')
+	{
+		//Positive Axis
+		if((kingPtr->rank-checkingPiecePtr->rank)==(kingPtr->file-checkingPiecePtr->file))
+		{
+			//checking piece above, king below
+			if(kingPtr->rank>checkingPiecePtr->rank)
+			{
+				if(endRank<kingPtr->rank &&
+				endRank>checkingPiecePtr->rank &&
+				endFile<kingPtr->file &&
+				endFile>checkingPiecePtr->file &&
+				(endRank-kingPtr->rank)==(endFile-kingPtr->file))
+				{
+					return true;
+				}
+			}
+			//checking piece below, king above
+			else if(kingPtr->rank<checkingPiecePtr->rank)
+			{
+				if(endRank>kingPtr->rank &&
+				endRank<checkingPiecePtr->rank &&
+				endFile>kingPtr->file &&
+				endFile<checkingPiecePtr->file &&
+				(endRank-kingPtr->rank)==(endFile-kingPtr->file))
+				{
+					return true;
+				}
+			}
+		}
+		//Negative Axis
+		else if((kingPtr->rank-checkingPiecePtr->rank)==(kingPtr->file-checkingPiecePtr->file)*-1)
+		{
+			//checking piece above, king below
+			if(kingPtr->rank>checkingPiecePtr->rank)
+			{
+				if(endRank<kingPtr->rank &&
+				endRank>checkingPiecePtr->rank &&
+				endFile>kingPtr->file &&
+				endFile<checkingPiecePtr->file &&
+				(endRank-kingPtr->rank)==(endFile-kingPtr->file)*-1)
+				{
+					return true;
+				}
+			}
+			//checking piece below, king above
+			else if(kingPtr->rank<checkingPiecePtr->rank)
+			{
+				if(endRank>kingPtr->rank &&
+				endRank<checkingPiecePtr->rank &&
+				endFile<kingPtr->file &&
+				endFile>checkingPiecePtr->file &&
+				(endRank-kingPtr->rank)==(endFile-kingPtr->file)*-1)
+				{
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+void Position::resolve_movesInCheck_scan_blocksAndCaptures(piece* kingPtr, piece* currentPiecePtr, piece* checkingPiece, int rankDirection, int fileDirection)
+{
+	int currentRank;
+	int currentFile;
+	int8_t startingRank = currentPiecePtr->rank;
+	int8_t startingFile = currentPiecePtr->file;
+	char pieceColor = currentPiecePtr->color;
+	for(int i=1;i<8 && onBoard(startingRank+(rankDirection*i),startingFile+(fileDirection*i));i++)
+	{
+		currentRank = startingRank+(rankDirection*i);
+		currentFile = startingFile+(fileDirection*i);
+		if(getPieceColor(&theBoard[currentRank][currentFile])!=pieceColor)
+		{
+			if((currentRank==checkingPiece->rank && currentFile==checkingPiece->file)||resolve_movesInCheck_blocksCheck(kingPtr,checkingPiece,currentRank,currentFile))
+			{
+				pushMove(currentPiecePtr,&theBoard[currentRank][currentFile]);
+			}
+		}
+		if(theBoard[currentRank][currentFile].piecePtr!=NULL)
+		{
+			break; //if there is a piece on this square stop scanning
+		}
+	}
+}
+void Position::resolve_movesInCheck_knight_capturesOnly(piece* currentPiecePtr, piece* checkingPiece, int rankOffset, int fileOffset)
+{
+	char pieceColor = currentPiecePtr->color;
+	int8_t startingRank = currentPiecePtr->rank;
+	int8_t startingFile = currentPiecePtr->file;
+	if(onBoard(startingRank+rankOffset,startingFile+fileOffset) &&
+	startingRank+rankOffset==checkingPiece->rank &&
+	startingFile+fileOffset==checkingPiece->file)
+	{
+		if(getPieceColor(&theBoard[startingRank+rankOffset][startingFile+fileOffset])!=pieceColor)
+		{
+			pushMove(currentPiecePtr,&theBoard[startingRank+rankOffset][startingFile+fileOffset]);
+		}
+	}
+}
+void Position::resolve_movesInCheck_knight_blocksAndCaptures(piece* kingPtr, piece* currentPiecePtr, piece* checkingPiece, int rankOffset, int fileOffset)
+{
+	char pieceColor = currentPiecePtr->color;
+	int8_t startingRank = currentPiecePtr->rank;
+	int8_t startingFile = currentPiecePtr->file;
+	if(onBoard(startingRank+rankOffset,startingFile+fileOffset) &&
+	((startingRank+rankOffset==checkingPiece->rank && startingFile+fileOffset==checkingPiece->file) ||
+	resolve_movesInCheck_blocksCheck(kingPtr,checkingPiece,startingRank+rankOffset,startingFile+fileOffset)))
+	{
+		if(getPieceColor(&theBoard[startingRank+rankOffset][startingFile+fileOffset])!=pieceColor)
+		{
+			pushMove(currentPiecePtr,&theBoard[startingRank+rankOffset][startingFile+fileOffset]);
+		}
+	}
+}
+void Position::resolve_movesInCheck_scan_capturesOnly(piece* currentPiecePtr, piece* checkingPiece, int rankDirection, int fileDirection)
+{
+	int currentRank;
+	int currentFile;
+	int8_t startingRank = currentPiecePtr->rank;
+	int8_t startingFile = currentPiecePtr->file;
+	char pieceColor = currentPiecePtr->color;
+	for(int i=1;i<8 && onBoard(startingRank+(rankDirection*i),startingFile+(fileDirection*i));i++)
+	{
+		currentRank = startingRank+(rankDirection*i);
+		currentFile = startingFile+(fileDirection*i);
+		if(getPieceColor(&theBoard[currentRank][currentFile])!=pieceColor)
+		{
+			if((currentRank==checkingPiece->rank && currentFile==checkingPiece->file))
+			{
+				pushMove(currentPiecePtr,&theBoard[currentRank][currentFile]);
+			}
+		}
+		if(theBoard[currentRank][currentFile].piecePtr!=NULL)
+		{
+			break; //if there is a piece on this square stop scanning
+		}
+	}
+}
+void Position::resolve_movesInCheck(char color)
+{
+	piece* currentPiecePtr;
+	if(color=='w')
+	{
+	//White
+		piece* whiteKingPtr = getKingPtr('w');
+		//Moving the king is always an option so long as the square is not blocked and has no targeters
+		resolve_moves_whiteKing(whiteKingPtr,whiteKingPtr->rank-1,whiteKingPtr->file-1);
+		resolve_moves_whiteKing(whiteKingPtr,whiteKingPtr->rank-1,whiteKingPtr->file);
+		resolve_moves_whiteKing(whiteKingPtr,whiteKingPtr->rank-1,whiteKingPtr->file+1);
+		resolve_moves_whiteKing(whiteKingPtr,whiteKingPtr->rank,whiteKingPtr->file-1);
+		resolve_moves_whiteKing(whiteKingPtr,whiteKingPtr->rank,whiteKingPtr->file+1);
+		resolve_moves_whiteKing(whiteKingPtr,whiteKingPtr->rank+1,whiteKingPtr->file-1);
+		resolve_moves_whiteKing(whiteKingPtr,whiteKingPtr->rank+1,whiteKingPtr->file);
+		resolve_moves_whiteKing(whiteKingPtr,whiteKingPtr->rank+1,whiteKingPtr->file+1);
+		//1. Double check: only valid move is king moves
+		if(getTotalTargeters(whiteKingPtr->squarePtr,'b')==2)
+		{
+			//do nothing, legal king moves are already resolved
+		}
+		//2. Single check: blocks, captures, king moves
+		else
+		{
+			piece* checkingPiece; //find piece causing check and save it
+			for(int i=0;i<whiteKingPtr->squarePtr->targeters_L;i++)
+			{
+				if(whiteKingPtr->squarePtr->targeters[i]->color=='b')
+				{
+					checkingPiece = whiteKingPtr->squarePtr->targeters[i];
+					break;
+				}
+			}
+			int8_t checkingPieceRank = checkingPiece->rank;
+			int8_t checkingPieceFile = checkingPiece->file;
+
+			if(checkingPiece->type=='n'||checkingPiece->type=='p') //only captures and moves
+			{
+				for(int pieceIterator=0;pieceIterator<MAX_PIECES;pieceIterator++)
+				{
+					currentPiecePtr = &whitePieces[pieceIterator];
+					if(currentPiecePtr->type == '\0')
+						continue;
+					char type = currentPiecePtr->type;
+					int8_t rank = currentPiecePtr->rank;
+					int8_t file = currentPiecePtr->file;
+					//update all moves and moves depending on piece type
+					if(type=='r'||type=='q')
+					{
+						if(currentPiecePtr->file==checkingPieceFile)
+						{
+							if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
+							{
+								//scan down
+								resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,1,0);
+								//scan up
+								resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,-1,0);
+							}
+						}
+						if(currentPiecePtr->rank==checkingPieceRank)
+						{
+							if(!currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
+							{
+								//scan right
+								resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,0,1);
+								//scan left
+								resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,0,-1);
+							}
+						}
+					}
+					if(type=='b'||type=='q')
+					{
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							//scan southeast
+							resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,1,1);
+							//scan northwest
+							resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,-1,-1);
+						}
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							//scan southwest
+							resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,1,-1);
+							//scan northeast
+							resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,-1,1);
+						}
+					}
+					if(type=='n')
+					{
+						//add moves for knight
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							resolve_movesInCheck_knight_capturesOnly(currentPiecePtr,checkingPiece,-2,-1);
+							resolve_movesInCheck_knight_capturesOnly(currentPiecePtr,checkingPiece,-1,-2);
+							resolve_movesInCheck_knight_capturesOnly(currentPiecePtr,checkingPiece,-2,1);
+							resolve_movesInCheck_knight_capturesOnly(currentPiecePtr,checkingPiece,-1,2);
+							resolve_movesInCheck_knight_capturesOnly(currentPiecePtr,checkingPiece,2,-1);
+							resolve_movesInCheck_knight_capturesOnly(currentPiecePtr,checkingPiece,1,-2);
+							resolve_movesInCheck_knight_capturesOnly(currentPiecePtr,checkingPiece,2,1);
+							resolve_movesInCheck_knight_capturesOnly(currentPiecePtr,checkingPiece,1,2);
+						}
+					}
+					if(type=='p')
+					{
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							if(onBoard(rank-1,file-1) && rank-1==checkingPieceRank && file-1==checkingPieceFile)
+							{
+								if((theBoard[rank-1][file-1].piecePtr!=NULL || (enPassantFile==file-1 && enPassantRank==rank-1)) &&
+								getPieceColor(&theBoard[rank-1][file-1])!='w')
+								{
+									pushMove(currentPiecePtr,&theBoard[rank-1][file-1]);
+								}
+							}
+						}
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							if(onBoard(rank-1,file+1) && rank-1==checkingPieceRank && file+1==checkingPieceFile)
+							{
+								if((theBoard[rank-1][file+1].piecePtr!=NULL || (enPassantFile==file+1 && enPassantRank==rank-1)) &&
+								getPieceColor(&theBoard[rank-1][file+1])!='w')
+								{
+									pushMove(currentPiecePtr,&theBoard[rank-1][file+1]);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			else //blocking, captures, and moves
+			{
+				for(int pieceIterator=0;pieceIterator<MAX_PIECES;pieceIterator++)
+				{
+					currentPiecePtr = &whitePieces[pieceIterator];
+					if(currentPiecePtr->type == '\0')
+						continue;
+					char type = currentPiecePtr->type;
+					int8_t rank = currentPiecePtr->rank;
+					int8_t file = currentPiecePtr->file;
+					//update all moves and moves depending on piece type
+					if(type=='r'||type=='q')
+					{
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							//scan down
+							resolve_movesInCheck_scan_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,1,0);
+							//scan up
+							resolve_movesInCheck_scan_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,-1,0);
+						}
+						if(!currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							//scan right
+							resolve_movesInCheck_scan_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,0,1);
+							//scan left
+							resolve_movesInCheck_scan_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,0,-1);
+						}
+					}
+					if(type=='b'||type=='q')
+					{
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							//scan southeast
+							resolve_movesInCheck_scan_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,1,1);
+							//scan northwest
+							resolve_movesInCheck_scan_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,-1,-1);
+						}
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							//scan southwest
+							resolve_movesInCheck_scan_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,1,-1);
+							//scan northeast
+							resolve_movesInCheck_scan_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,-1,1);
+						}
+					}
+					if(type=='n')
+					{
+						//add moves for knight
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							resolve_movesInCheck_knight_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,-2,-1);
+							resolve_movesInCheck_knight_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,-1,-2);
+							resolve_movesInCheck_knight_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,-2,1);
+							resolve_movesInCheck_knight_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,-1,2);
+							resolve_movesInCheck_knight_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,2,-1);
+							resolve_movesInCheck_knight_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,1,-2);
+							resolve_movesInCheck_knight_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,2,1);
+							resolve_movesInCheck_knight_blocksAndCaptures(whiteKingPtr,currentPiecePtr,checkingPiece,1,2);
+						}
+					}
+					if(type=='p')
+					{
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_positiveDiag] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							if(onBoard(rank-1,file))
+							{
+								if(theBoard[rank-1][file].piecePtr==NULL)
+								{
+									if(resolve_movesInCheck_blocksCheck(whiteKingPtr,checkingPiece,rank-1,file))
+									{
+										pushMove(currentPiecePtr,&theBoard[rank-1][file]);
+									}
+									if(rank==6 && theBoard[rank-2][file].piecePtr==NULL)
+									{
+										if(resolve_movesInCheck_blocksCheck(whiteKingPtr,checkingPiece,rank-2,file))
+										{
+											pushMove(currentPiecePtr,&theBoard[rank-2][file]);
+										}
+									}
+								}
+							}
+						}
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							if(onBoard(rank-1,file-1) && rank-1==checkingPieceRank && file-1==checkingPieceFile)
+							{
+								if((theBoard[rank-1][file-1].piecePtr!=NULL || (enPassantFile==file-1 && enPassantRank==rank-1)) &&
+								getPieceColor(&theBoard[rank-1][file-1])!='w')
+								{
+									pushMove(currentPiecePtr,&theBoard[rank-1][file-1]);
+								}
+							}
+						}
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							if(onBoard(rank-1,file+1) && rank-1==checkingPieceRank && file+1==checkingPieceFile)
+							{
+								if((theBoard[rank-1][file+1].piecePtr!=NULL || (enPassantFile==file+1 && enPassantRank==rank-1)) &&
+								getPieceColor(&theBoard[rank-1][file+1])!='w')
+								{
+									pushMove(currentPiecePtr,&theBoard[rank-1][file+1]);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	if(color=='b')
+	{
+		//Black
+		piece* blackKingPtr = getKingPtr('b');
+		//Moving the king is always an option so long as the square is not blocked and has no targeters
+		resolve_moves_blackKing(blackKingPtr,blackKingPtr->rank-1,blackKingPtr->file-1);
+		resolve_moves_blackKing(blackKingPtr,blackKingPtr->rank-1,blackKingPtr->file);
+		resolve_moves_blackKing(blackKingPtr,blackKingPtr->rank-1,blackKingPtr->file+1);
+		resolve_moves_blackKing(blackKingPtr,blackKingPtr->rank,blackKingPtr->file-1);
+		resolve_moves_blackKing(blackKingPtr,blackKingPtr->rank,blackKingPtr->file+1);
+		resolve_moves_blackKing(blackKingPtr,blackKingPtr->rank+1,blackKingPtr->file-1);
+		resolve_moves_blackKing(blackKingPtr,blackKingPtr->rank+1,blackKingPtr->file);
+		resolve_moves_blackKing(blackKingPtr,blackKingPtr->rank+1,blackKingPtr->file+1);
+		//1. Double check: only valid move is king moves
+		if(getTotalTargeters(blackKingPtr->squarePtr,'w')==2)
+		{
+			//do nothing, legal king moves are already resolved
+		}
+		//2. Single check: blocks, captures, king moves
+		else
+		{
+			piece* checkingPiece; //find piece causing check and save it
+			for(int i=0;i<blackKingPtr->squarePtr->targeters_L;i++)
+			{
+				if(blackKingPtr->squarePtr->targeters[i]->color=='w')
+				{
+					checkingPiece = blackKingPtr->squarePtr->targeters[i];
+					break;
+				}
+			}
+			int8_t checkingPieceRank = checkingPiece->rank;
+			int8_t checkingPieceFile = checkingPiece->file;
+			if(checkingPiece->type=='n'||checkingPiece->type=='p') //only captures and moves
+			{
+				for(int pieceIterator=0;pieceIterator<MAX_PIECES;pieceIterator++)
+				{
+					currentPiecePtr = &blackPieces[pieceIterator];
+					if(currentPiecePtr->type == '\0')
+						continue;
+					char type = currentPiecePtr->type;
+					int8_t rank = currentPiecePtr->rank;
+					int8_t file = currentPiecePtr->file;
+					//update all moves and moves depending on piece type
+					if(type=='r'||type=='q')
+					{
+						if(currentPiecePtr->file==checkingPieceFile)
+						{
+							if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
+							{
+								//scan down
+								resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,1,0);
+								//scan up
+								resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,-1,0);
+							}
+						}
+						if(currentPiecePtr->rank==checkingPieceRank)
+						{
+							if(!currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
+							{
+								//scan right
+								resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,0,1);
+								//scan left
+								resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,0,-1);
+							}
+						}
+					}
+					if(type=='b'||type=='q')
+					{
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							//scan southeast
+							resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,1,1);
+							//scan northwest
+							resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,-1,-1);
+						}
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							//scan southwest
+							resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,1,-1);
+							//scan northeast
+							resolve_movesInCheck_scan_capturesOnly(currentPiecePtr,checkingPiece,-1,1);
+						}
+					}
+					if(type=='n')
+					{
+						//add moves for knight
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-2,-1);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-1,-2);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-2,1);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-1,2);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,2,-1);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,1,-2);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,2,1);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,1,2);
+						}
+					}
+					if(type=='p')
+					{
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							if(onBoard(rank+1,file-1) && rank+1==checkingPieceRank && file-1==checkingPieceFile)
+							{
+								if((theBoard[rank+1][file-1].piecePtr!=NULL || (enPassantFile==file-1 && enPassantRank==rank+1)) &&
+								getPieceColor(&theBoard[rank+1][file-1])!='w')
+								{
+									pushMove(currentPiecePtr,&theBoard[rank+1][file-1]);
+								}
+							}
+						}
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							if(onBoard(rank+1,file+1) && rank+1==checkingPieceRank && file+1==checkingPieceFile)
+							{
+								if((theBoard[rank+1][file+1].piecePtr!=NULL || (enPassantFile==file+1 && enPassantRank==rank+1)) &&
+								getPieceColor(&theBoard[rank+1][file+1])!='w')
+								{
+									pushMove(currentPiecePtr,&theBoard[rank+1][file+1]);
+								}
+							}
+						}
+					}
+				}
+			}
+			else //blocking, captures, and moves
+			{
+				for(int pieceIterator=0;pieceIterator<MAX_PIECES;pieceIterator++)
+				{
+					currentPiecePtr = &blackPieces[pieceIterator];
+					if(currentPiecePtr->type == '\0')
+						continue;
+					char type = currentPiecePtr->type;
+					int8_t rank = currentPiecePtr->rank;
+					int8_t file = currentPiecePtr->file;
+					//update all moves and moves depending on piece type
+					if(type=='r'||type=='q')
+					{
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							//scan down
+							resolve_movesInCheck_scan_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,1,0);
+							//scan up
+							resolve_movesInCheck_scan_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-1,0);
+						}
+						if(!currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							//scan right
+							resolve_movesInCheck_scan_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,0,1);
+							//scan left
+							resolve_movesInCheck_scan_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,0,-1);
+						}
+					}
+					if(type=='b'||type=='q')
+					{
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							//scan southeast
+							resolve_movesInCheck_scan_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,1,1);
+							//scan northwest
+							resolve_movesInCheck_scan_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-1,-1);
+						}
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							//scan southwest
+							resolve_movesInCheck_scan_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,1,-1);
+							//scan northeast
+							resolve_movesInCheck_scan_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-1,1);
+						}
+					}
+					if(type=='n')
+					{
+						//add moves for knight
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-2,-1);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-1,-2);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-2,1);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,-1,2);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,2,-1);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,1,-2);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,2,1);
+							resolve_movesInCheck_knight_blocksAndCaptures(blackKingPtr,currentPiecePtr,checkingPiece,1,2);
+						}
+					}
+					if(type=='p')
+					{
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_positiveDiag] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							if(onBoard(rank+1,file))
+							{
+								if(theBoard[rank+1][file].piecePtr==NULL)
+								{
+									if(resolve_movesInCheck_blocksCheck(blackKingPtr,checkingPiece,rank+1,file))
+									{
+										pushMove(currentPiecePtr,&theBoard[rank+1][file]);
+									}
+									if(rank==1 && theBoard[rank+2][file].piecePtr==NULL)
+									{
+										if(resolve_movesInCheck_blocksCheck(blackKingPtr,checkingPiece,rank+2,file))
+										{
+											pushMove(currentPiecePtr,&theBoard[rank+2][file]);
+										}
+									}
+								}
+							}
+						}
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
+						{
+							if(onBoard(rank+1,file-1) && rank+1==checkingPieceRank && file-1==checkingPieceFile)
+							{
+								if((theBoard[rank+1][file-1].piecePtr!=NULL || (enPassantFile==file-1 && enPassantRank==rank+1)) &&
+								getPieceColor(&theBoard[rank+1][file-1])!='w')
+								{
+									pushMove(currentPiecePtr,&theBoard[rank+1][file-1]);
+								}
+							}
+						}
+						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
+						{
+							if(onBoard(rank+1,file+1) && rank+1==checkingPieceRank && file+1==checkingPieceFile)
+							{
+								if((theBoard[rank+1][file+1].piecePtr!=NULL || (enPassantFile==file+1 && enPassantRank==rank+1)) &&
+								getPieceColor(&theBoard[rank+1][file+1])!='w')
+								{
+									pushMove(currentPiecePtr,&theBoard[rank+1][file+1]);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+void Position::resolve_positionState()
+{
+	if(fiftyMoveRuleCounter==100)
+	{
+		positionState = positionstate_draw;
+		return;
+	}
+	piece currentPiece;
+	if(colorToMove=='w')
+	{
+		for(int i=0;i<MAX_PIECES;i++)
+		{
+			currentPiece = whitePieces[i];
+			if(currentPiece.moves_L!=0)
+			{
+				positionState=positionstate_inplay;
+				return;
+			}
+		}
+		if(getTotalTargeters(getKingPtr('w')->squarePtr,'b')==0)
+		{
+			positionState=positionstate_draw;
+			return;
+		}
+		else
+		{
+			positionState=positionstate_blackWin;
+			return;
+		}
+	}
+	else
+	{
+		for(int i=0;i<MAX_PIECES;i++)
+		{
+			currentPiece = blackPieces[i];
+			if(currentPiece.moves_L!=0)
+			{
+				positionState=positionstate_inplay;
+				return;
+			}
+		}
+		if(getTotalTargeters(getKingPtr('b')->squarePtr,'w')==0)
+		{
+			positionState=positionstate_draw;
+			return;
+		}
+		else
+		{
+			positionState=positionstate_whiteWin;
+			return;
+		}
+	}
+}
 void Position::resolve()
 {
+	//Targets
 	resolve_targets('w');
 	resolve_targets('b');
+
+	//Pins
 	resolve_pins('w');
 	resolve_pins('b');
-	resolve_moves('w');
-	resolve_moves('b');
-}
 
+	//Moves
+	if(colorToMove=='w' && getTotalTargeters(getKingPtr('w')->squarePtr,'b')!=0) //white to move with king in check
+	{
+		resolve_movesInCheck('w');
+		resolve_moves('b');
+	}
+	else if(colorToMove=='b' && getTotalTargeters(getKingPtr('b')->squarePtr,'w')!=0) //black to move with king in check
+	{
+		resolve_movesInCheck('b');
+		resolve_moves('w');
+	}
+	else
+	{
+		resolve_moves('w');
+		resolve_moves('b');
+	}
+	resolve_positionState();
+}
 void Position::clean()
 {
 	for(int i=0;i<MAX_PIECES;i++)
@@ -2683,7 +3241,7 @@ void Position::removePiece(piece* piecePtr)
 		whitePieces_L--;
 	if(piecePtr->color=='b')
 		blackPieces_L--;
-	
+
 	//remove targets
 	while(popTarget(piecePtr));
 	//remove targets
@@ -2734,7 +3292,7 @@ bool Position::popTarget(piece* piecePtr)
 		piecePtr->targets_L--;
 		tempSquarePtr = piecePtr->targets[piecePtr->targets_L];
 		piecePtr->targets[piecePtr->targets_L] = NULL;
-		
+
 		bool foundPiece = false;
 		for(int i=0;i<MAX_SQUARE_TARGETS;i++)
 		{
@@ -2773,7 +3331,7 @@ bool Position::popMove(piece* piecePtr)
 		piecePtr->moves_L--;
 		tempSquarePtr = piecePtr->moves[piecePtr->moves_L];
 		piecePtr->moves[piecePtr->moves_L] = NULL;
-		
+
 		bool foundPiece = false;
 		for(int i=0;i<MAX_SQUARE_MOVES;i++)
 		{
@@ -2829,7 +3387,7 @@ void Position::removeTarget(piece* piecePtr, square* squareTarget)
 		}
 	}
 	piecePtr->targets_L--;
-	
+
 	bool foundPiece = false;
 	for(int i=0;i<MAX_SQUARE_TARGETS;i++)
 	{
@@ -2883,7 +3441,7 @@ void Position::removeMove(piece* piecePtr, square* squareMove)
 		}
 	}
 	piecePtr->moves_L--;
-	
+
 	bool foundPiece = false;
 	for(int i=0;i<MAX_SQUARE_MOVES;i++)
 	{
@@ -2916,7 +3474,7 @@ bool Position::checkCanCastle(int castlingEnumVal)
 {
 	if(castlingEnumVal == kingside_white)
 	{
-		if(castlingFlags[kingside_white] &&					//castling flag is valid	
+		if(castlingFlags[kingside_white] &&					//castling flag is valid
 		getPieceColor(&theBoard[7][4]) == 'w' &&
 		getPieceColor(&theBoard[7][7]) == 'w' &&
 		theBoard[7][5].piecePtr==NULL &&
@@ -2934,7 +3492,7 @@ bool Position::checkCanCastle(int castlingEnumVal)
 	}
 	else if(castlingEnumVal == queenside_white)
 	{
-		if(castlingFlags[queenside_white] &&					//castling flag is valid	
+		if(castlingFlags[queenside_white] &&					//castling flag is valid
 		getPieceColor(&theBoard[7][4]) == 'w' &&
 		getPieceColor(&theBoard[7][0]) == 'w' &&
 		theBoard[7][3].piecePtr==NULL &&
@@ -2953,7 +3511,7 @@ bool Position::checkCanCastle(int castlingEnumVal)
 	}
 	if(castlingEnumVal == kingside_black)
 	{
-		if(castlingFlags[kingside_white] &&					//castling flag is valid	
+		if(castlingFlags[kingside_white] &&					//castling flag is valid
 		getPieceColor(&theBoard[0][4]) == 'b' &&
 		getPieceColor(&theBoard[0][7]) == 'b' &&
 		theBoard[0][5].piecePtr==NULL &&
@@ -2971,7 +3529,7 @@ bool Position::checkCanCastle(int castlingEnumVal)
 	}
 	else if(castlingEnumVal == queenside_black)
 	{
-		if(castlingFlags[queenside_white] &&					//castling flag is valid	
+		if(castlingFlags[queenside_white] &&					//castling flag is valid
 		getPieceColor(&theBoard[0][4]) == 'b' &&
 		getPieceColor(&theBoard[0][0]) == 'b' &&
 		theBoard[0][3].piecePtr==NULL &&
@@ -2991,52 +3549,4 @@ bool Position::checkCanCastle(int castlingEnumVal)
 	else
 		return false;
 	return false;
-}
-
-//-Utility-
-bool Position::onBoard(int8_t rank, int8_t file)
-{
-	if(rank>=0 && rank<8 && file>=0 && file<8)
-		return true;
-	return false;
-}
-
-int Position::getTotalTargeters(square* squarePtr, char color)
-{
-	int total = 0;
-	for(int i=0;i<squarePtr->targeters_L;i++)
-	{
-		if(squarePtr->targeters[i]->color==color)
-			total++;
-	}
-	return total;
-}
-
-char Position::getPieceColor(square* squarePtr)
-{
-	if(squarePtr->piecePtr==NULL)
-		return '\0';
-	else
-		return squarePtr->piecePtr->color;
-}
-
-Position::piece* Position::getKingPtr(char color)
-{
-	if(color=='w')
-	{
-		for(int i=0;i<MAX_PIECES;i++)
-		{
-			if(whitePieces[i].type=='k')
-				return &whitePieces[i];
-		}
-	}
-	if(color=='b')
-	{
-		for(int i=0;i<MAX_PIECES;i++)
-		{
-			if(blackPieces[i].type=='k')
-				return &blackPieces[i];
-		}
-	}
-	return NULL;
 }

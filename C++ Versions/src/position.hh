@@ -5,17 +5,32 @@
 #include <cstring>
 #include <cstddef>
 #include <cctype>
+#include <cmath>
 
 #define MAX_PIECES 16
-#define MAX_PIECE_TARGETS 27
-#define MAX_PIECE_MOVES 27
-#define MAX_SQUARE_TARGETS 22
+#define MAX_PIECE_TARGETS 27	//Max number of targets a piece can have (this is determined to be 27)
+#define MAX_PIECE_MOVES 27		//similar to above
+#define MAX_SQUARE_TARGETS 22	//Max number of pieces that can target any 1 square
 #define MAX_SQUARE_MOVES 22
+
+#define PIECE_CONTROL_WEIGHT 0.2	//During instant eval the weight given to controlling a square with a piece on it (in proportion to that piece)
+#define SQUARE_CONTROL_WEIGHT 0.2	//During instant eval the weight given to controlling a empty square
+
+//--Move--
+struct move
+{
+	int8_t startRank = -1;
+	int8_t startFile = -1;
+	int8_t endRank = -1;
+	int8_t endFile = -1;
+	char endPieceType = '\0'; //needed for promotion moves
+};
+typedef struct move move;
 
 class Position
 {
-	private:
-		//--Piece and Square Data Structures--
+	public:
+		//STRUCTS
 		struct square;
 		struct piece
 		{
@@ -51,7 +66,7 @@ class Position
 		typedef struct square square;
 		typedef struct piece piece;
 		
-		//--Data--
+		//DATA
 		square** theBoard;	//8x8
 		short whitePieces_L = 0;
 		short blackPieces_L = 0;
@@ -71,20 +86,16 @@ class Position
 		};
 		short fiftyMoveRuleCounter = -1;
 		short moveCounter = -1;
-	
-	public:
-		//--Move--
-		struct move
+		int8_t positionState = 0;
+		enum PositionState
 		{
-			int8_t startRank = -1;
-			int8_t startFile = -1;
-			int8_t endRank = -1;
-			int8_t endFile = -1;
-			char endPieceType = '\0'; //for promotion moves
+			positionstate_inplay,
+			positionstate_draw,
+			positionstate_whiteWin,
+			positionstate_blackWin
 		};
-		typedef struct move move;
 		
-		//--Functions--
+		//FUNCTIONS
 		//-Constructors-
 		Position();
 		Position(const char* FENString);
@@ -93,17 +104,29 @@ class Position
 		Position(const Position* lastPosition, const move moveMade);
 		void castlingConstructor(const Position* lastPosition, const int8_t castlingCode);
 		~Position();
-		
+
+		//-Get-
+		int getTotalMoves();
+		move* getAllMoves();
+		char* getNotation(const move& moveMade);
+		move getMoveFromNotation(const char* notation);
+		int getTotalTargeters(square* squarePtr, char color);
+		int getTotalMovers(square* squarePtr, char color);
+		char getPieceColor(square* squarePtr);
+		piece* getKingPtr(char color);
+		double instantEval();
+	private:
+			bool instantEval_passedPawn(int8_t rank, char color, int j);
+
+	public:
 		//-Debug Information-
 		void printBoard();
 		void printStats();
 		void printAllTargets();
 		void printAllMoves();
-		
-		//-Get-
-		int getTotalMoves();
-		move* getAllMoves();
-		char* getNotation(const move& moveMade);
+
+		//-Utility-
+		bool onBoard(int8_t rank, int8_t file);
 		
 	private:
 		void setupMemory();
@@ -113,10 +136,22 @@ class Position
 		//-Position Calculation-
 		void resolve();			//resolve all targets and moves
 			void resolve_targets(char color);
-				void resolve_targets_whiteKing(piece* kingPtr, int8_t rank, int8_t file);
-				void resolve_targets_blackKing(piece* kingPtr, int8_t rank, int8_t file);
+				void resolve_targets_scan(piece* currentPiecePtr, int8_t startingRank, int8_t startingFile, int rankDirection, int fileDirection); // rank/fileDirection = -1, 0, or 1
+				void resolve_targets_king(piece* kingPtr, int8_t rank, int8_t file);
 			void resolve_pins(char color);
+				void resolve_pins_scan(piece* kingPtr, int rankDirection, int fileDirection);
 			void resolve_moves(char color);
+				void resolve_moves_whiteKing(piece* kingPtr, int8_t rank, int8_t file);
+				void resolve_moves_blackKing(piece* kingPtr, int8_t rank, int8_t file);
+				void resolve_moves_knight(piece* currentPiecePtr, int rankOffset, int fileOffset);
+				void resolve_moves_scan(piece* currentPiecePtr, int8_t startingRank, int8_t startingFile, int rankDirection, int fileDirection);
+			void resolve_movesInCheck(char color);
+				bool resolve_movesInCheck_blocksCheck(const piece* kingPtr, const piece* checkingPiecePtr, int8_t endRank, int8_t endFile);
+				void resolve_movesInCheck_knight_capturesOnly(piece* currentPiecePtr, piece* checkingPiece, int rankOffset, int fileOffset);
+				void resolve_movesInCheck_knight_blocksAndCaptures(piece* kingPtr, piece* currentPiecePtr, piece* checkingPiece, int rankOffset, int fileOffset);
+				void resolve_movesInCheck_scan_blocksAndCaptures(piece* kingPtr, piece* currentPiecePtr, piece* checkingPiece, int rankDirection, int fileDirection);
+				void resolve_movesInCheck_scan_capturesOnly(piece* currentPiecePtr, piece* checkingPiece, int rankDirection, int fileDirection);
+			void resolve_positionState();
 		void clean();			//remove all targets and moves
 		
 		//-Piece Setup-
@@ -133,12 +168,6 @@ class Position
 		
 		//-Castling-
 		bool checkCanCastle(int castlingEnumVal);	//used for evaluating if a given castling move is valid (used by constructor to update canCastle flags)
-		
-		//-Utility-
-		bool onBoard(int8_t rank, int8_t file);
-		int getTotalTargeters(square* squarePtr, char color);
-		char getPieceColor(square* squarePtr);
-		piece* getKingPtr(char color);
 };
 
 #endif

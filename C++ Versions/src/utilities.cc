@@ -107,3 +107,68 @@ char enginePieceType_TO_notationPieceType(char enginePieceType, char enginePiece
 		return enginePieceType;
 	}
 }
+char* deleteCharacter(char* charString, int index, int length)
+{
+	charString[index]=='\0';
+	index++;
+	while(charString[index]!='\0' && index<length)
+	{
+		charString[index-1] = charString[index];
+		charString[index] = '\0';
+		index++;
+	}
+	return charString;
+}
+bool isFileOrRank(char charInQuestion)
+{
+	if(charInQuestion=='a'||
+	charInQuestion=='b'||
+	charInQuestion=='c'||
+	charInQuestion=='d'||
+	charInQuestion=='e'||
+	charInQuestion=='f'||
+	charInQuestion=='g'||
+	charInQuestion=='h'||
+	charInQuestion=='1'||
+	charInQuestion=='2'||
+	charInQuestion=='3'||
+	charInQuestion=='4'||
+	charInQuestion=='5'||
+	charInQuestion=='6'||
+	charInQuestion=='7'||
+	charInQuestion=='8')
+	{
+		return true;
+	}
+	return false;
+}
+bool isRank(char charInQuestion)
+{
+	if(charInQuestion=='1'||
+	charInQuestion=='2'||
+	charInQuestion=='3'||
+	charInQuestion=='4'||
+	charInQuestion=='5'||
+	charInQuestion=='6'||
+	charInQuestion=='7'||
+	charInQuestion=='8')
+	{
+		return true;
+	}
+	return false;
+}
+bool isFile(char charInQuestion)
+{
+	if(charInQuestion=='a'||
+	charInQuestion=='b'||
+	charInQuestion=='c'||
+	charInQuestion=='d'||
+	charInQuestion=='e'||
+	charInQuestion=='f'||
+	charInQuestion=='g'||
+	charInQuestion=='h')
+	{
+		return true;
+	}
+	return false;
+}
