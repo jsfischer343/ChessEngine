@@ -1,8 +1,8 @@
 #include <iostream>
 #include <chrono>
 #include <sys/resource.h>
-#include "position.hh"
 #include "utilities.hh"
+#include "position.hh"
 #include "game.hh"
 
 

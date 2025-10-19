@@ -8,13 +8,13 @@
 #include <cmath>
 
 #define MAX_PIECES 16
-#define MAX_PIECE_TARGETS 27	//Max number of targets a piece can have (this is determined to be 27)
+#define MAX_PIECE_TARGETS 27	//Max number of targets a piece can have (this will never be greater than 27 in a normal chess game)
 #define MAX_PIECE_MOVES 27		//similar to above
 #define MAX_SQUARE_TARGETS 22	//Max number of pieces that can target any 1 square
 #define MAX_SQUARE_MOVES 22
 
 #define PIECE_CONTROL_WEIGHT 0.2	//During instant eval the weight given to controlling a square with a piece on it (in proportion to that piece)
-#define SQUARE_CONTROL_WEIGHT 0.2	//During instant eval the weight given to controlling a empty square
+#define SQUARE_CONTROL_WEIGHT 0.2	//During instant eval the weight given to controlling an empty square
 
 //--Move--
 struct move
