@@ -14,7 +14,16 @@
 #define MAX_SQUARE_MOVES 22
 
 #define PIECE_CONTROL_WEIGHT 0.2	//During instant eval the weight given to controlling a square with a piece on it (in proportion to that piece)
-#define SQUARE_CONTROL_WEIGHT 0.2	//During instant eval the weight given to controlling an empty square
+#define SQUARE_CONTROL_WEIGHT 0.1	//During instant eval the weight given to controlling an empty square
+#define PAWN_WEIGHT_1 0.02 //value of pawn that is 1 out 6 squares from promotion
+#define PAWN_WEIGHT_2 0.08 //and so on
+#define PAWN_WEIGHT_3 0.15
+#define PAWN_WEIGHT_4 0.5
+#define PAWN_WEIGHT_PASSED_1 0.5
+#define PAWN_WEIGHT_PASSED_2 0.5
+#define PAWN_WEIGHT_PASSED_3 1
+#define PAWN_WEIGHT_PASSED_4 1.2
+#define PAWN_WEIGHT_PASSED_5 2 //value of pawn that is one square from promotion
 
 //--Move--
 struct move
@@ -86,14 +95,6 @@ class Position
 		};
 		short fiftyMoveRuleCounter = -1;
 		short moveCounter = -1;
-		int8_t positionState = 0;
-		enum PositionState
-		{
-			positionstate_inplay,
-			positionstate_draw,
-			positionstate_whiteWin,
-			positionstate_blackWin
-		};
 		
 		//FUNCTIONS
 		//-Constructors-
@@ -114,7 +115,7 @@ class Position
 		int getTotalMovers(square* squarePtr, char color);
 		char getPieceColor(square* squarePtr);
 		piece* getKingPtr(char color);
-		double instantEval();
+		double instantEval();	//create a bias eval only using the current position and not taking into account game state
 	private:
 			bool instantEval_passedPawn(int8_t rank, char color, int j);
 
@@ -151,7 +152,6 @@ class Position
 				void resolve_movesInCheck_knight_blocksAndCaptures(piece* kingPtr, piece* currentPiecePtr, piece* checkingPiece, int rankOffset, int fileOffset);
 				void resolve_movesInCheck_scan_blocksAndCaptures(piece* kingPtr, piece* currentPiecePtr, piece* checkingPiece, int rankDirection, int fileDirection);
 				void resolve_movesInCheck_scan_capturesOnly(piece* currentPiecePtr, piece* checkingPiece, int rankDirection, int fileDirection);
-			void resolve_positionState();
 		void clean();			//remove all targets and moves
 		
 		//-Piece Setup-

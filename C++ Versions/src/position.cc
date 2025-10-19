@@ -1512,13 +1512,6 @@ double Position::instantEval()
 {
 	double materialEval=0;
 	double positionEval=0;
-
-	if(positionState==positionstate_draw)
-		return 0;
-	if(positionState==positionstate_blackWin)
-		return -200;
-	if(positionState==positionstate_whiteWin)
-		return 200;
 	//Material
 	piece* currentPiece;
 	for(int i=0;i<MAX_PIECES;i++)
@@ -1564,6 +1557,7 @@ double Position::instantEval()
 			pieceValue=0;
 			tempWhiteTargeters=getTotalTargeters(&theBoard[i][j],'w');
 			tempBlackTargeters=getTotalTargeters(&theBoard[i][j],'b');
+			//does this square have a piece on it?
 			if(getPieceColor(&theBoard[i][j])!='\0')
 			{
 				if(theBoard[i][j].piecePtr->type=='q')
@@ -1597,6 +1591,7 @@ double Position::instantEval()
 			{
 				positionEval=positionEval-(pieceValue*PIECE_CONTROL_WEIGHT)-SQUARE_CONTROL_WEIGHT;
 			}
+			//additional pawn positional analysis (passed pawns, position towards promotion)
 			if(tempWhiteTargeters>=tempBlackTargeters)
 			{
 				if(getPieceColor(&theBoard[i][j])=='w')
@@ -1605,31 +1600,31 @@ double Position::instantEval()
 					{
 						if(i==5)
 						{
-							positionEval=positionEval+0.02;
+							positionEval=positionEval+PAWN_WEIGHT_1;
 							if(instantEval_passedPawn(5,'w',j))
-								positionEval=positionEval+1;
+								positionEval=positionEval+PAWN_WEIGHT_PASSED_1;
 						}
 						else if(i==4)
 						{
-							positionEval=positionEval+0.08;
+							positionEval=positionEval+PAWN_WEIGHT_2;
 							if(instantEval_passedPawn(4,'w',j))
-								positionEval=positionEval+1;
+								positionEval=positionEval+PAWN_WEIGHT_PASSED_2;
 						}
 						else if(i==3)
 						{
-							positionEval=positionEval+0.15;
+							positionEval=positionEval+PAWN_WEIGHT_3;
 							if(instantEval_passedPawn(3,'w',j))
-								positionEval=positionEval+1;
+								positionEval=positionEval+PAWN_WEIGHT_PASSED_3;
 						}
 						else if(i==2)
 						{
-							positionEval=positionEval+0.5;
+							positionEval=positionEval+PAWN_WEIGHT_4;
 							if(instantEval_passedPawn(2,'w',j))
-								positionEval=positionEval+1;
+								positionEval=positionEval+PAWN_WEIGHT_PASSED_4;
 						}
 						else if(i==1)
 						{
-							positionEval=positionEval+2;
+							positionEval=positionEval+PAWN_WEIGHT_PASSED_5;
 						}
 					}
 				}
@@ -1642,31 +1637,31 @@ double Position::instantEval()
 					{
 						if(i==2)
 						{
-							positionEval=positionEval-0.02;
+							positionEval=positionEval-PAWN_WEIGHT_1;
 							if(instantEval_passedPawn(2,'b',j))
-								positionEval=positionEval-1;
+								positionEval=positionEval-PAWN_WEIGHT_PASSED_1;
 						}
 						else if(i==3)
 						{
-							positionEval=positionEval-0.08;
+							positionEval=positionEval-PAWN_WEIGHT_2;
 							if(instantEval_passedPawn(3,'b',j))
-								positionEval=positionEval-1;
+								positionEval=positionEval-PAWN_WEIGHT_PASSED_2;
 						}
 						else if(i==4)
 						{
-							positionEval=positionEval-0.15;
+							positionEval=positionEval-PAWN_WEIGHT_3;
 							if(instantEval_passedPawn(4,'b',j))
-								positionEval=positionEval-1;
+								positionEval=positionEval-PAWN_WEIGHT_PASSED_3;
 						}
 						else if(i==5)
 						{
-							positionEval=positionEval-0.5;
+							positionEval=positionEval-PAWN_WEIGHT_4;
 							if(instantEval_passedPawn(5,'b',j))
-								positionEval=positionEval-1;
+								positionEval=positionEval-PAWN_WEIGHT_PASSED_4;
 						}
 						else if(i==6)
 						{
-							positionEval=positionEval-2;
+							positionEval=positionEval-PAWN_WEIGHT_PASSED_5;
 						}
 					}
 				}
@@ -1840,7 +1835,7 @@ void Position::cleanupMemory()
 
 void Position::sanityCheck()
 {
-
+	//nothing here yet :(
 }
 
 //-Position Calculation-
@@ -3101,59 +3096,6 @@ void Position::resolve_movesInCheck(char color)
 		}
 	}
 }
-void Position::resolve_positionState()
-{
-	if(fiftyMoveRuleCounter==100)
-	{
-		positionState = positionstate_draw;
-		return;
-	}
-	piece currentPiece;
-	if(colorToMove=='w')
-	{
-		for(int i=0;i<MAX_PIECES;i++)
-		{
-			currentPiece = whitePieces[i];
-			if(currentPiece.moves_L!=0)
-			{
-				positionState=positionstate_inplay;
-				return;
-			}
-		}
-		if(getTotalTargeters(getKingPtr('w')->squarePtr,'b')==0)
-		{
-			positionState=positionstate_draw;
-			return;
-		}
-		else
-		{
-			positionState=positionstate_blackWin;
-			return;
-		}
-	}
-	else
-	{
-		for(int i=0;i<MAX_PIECES;i++)
-		{
-			currentPiece = blackPieces[i];
-			if(currentPiece.moves_L!=0)
-			{
-				positionState=positionstate_inplay;
-				return;
-			}
-		}
-		if(getTotalTargeters(getKingPtr('b')->squarePtr,'w')==0)
-		{
-			positionState=positionstate_draw;
-			return;
-		}
-		else
-		{
-			positionState=positionstate_whiteWin;
-			return;
-		}
-	}
-}
 void Position::resolve()
 {
 	//Targets
@@ -3180,7 +3122,6 @@ void Position::resolve()
 		resolve_moves('w');
 		resolve_moves('b');
 	}
-	resolve_positionState();
 }
 void Position::clean()
 {
