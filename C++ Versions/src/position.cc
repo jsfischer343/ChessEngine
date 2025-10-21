@@ -1512,6 +1512,13 @@ double Position::instantEval()
 {
 	double materialEval=0;
 	double positionEval=0;
+
+	if(positionState==positionstate_draw50||positionState==positionstate_drawStalemate||positionState==positionstate_drawInsufficientMaterial)
+		return 0;
+	if(positionState==positionstate_blackWin)
+		return -200;
+	if(positionState==positionstate_whiteWin)
+		return 200;
 	//Material
 	piece* currentPiece;
 	for(int i=0;i<MAX_PIECES;i++)
@@ -3096,6 +3103,130 @@ void Position::resolve_movesInCheck(char color)
 		}
 	}
 }
+bool Position::resolve_positionState_insufficientMaterial()
+{
+	short whiteBishopCount = 0;
+	short whiteKnightCount = 0;
+	short blackBishopCount = 0;
+	short blackKnightCount = 0;
+	if(whitePieces_L==1&&blackPieces_L==1)
+	{
+		return true;
+	}
+	for(int i=0;i<whitePieces_L;i++)
+	{
+		if(whitePieces[i].type=='q')
+		{
+			return false;
+		}
+		if(whitePieces[i].type=='r')
+		{
+			return false;
+		}
+		if(whitePieces[i].type=='p')
+		{
+			return false;
+		}
+		if(whitePieces[i].type=='b')
+		{
+			whiteBishopCount++;
+		}
+		else if(whitePieces[i].type=='n')
+		{
+			whiteKnightCount++;
+		}
+		if(whiteBishopCount==2||whiteKnightCount==3||(whiteBishopCount==1&&whiteKnightCount==1))
+		{
+			return false;
+		}
+	}
+	for(int i=0;i<blackPieces_L;i++)
+	{
+		if(blackPieces[i].type=='q')
+		{
+			return false;
+		}
+		if(blackPieces[i].type=='r')
+		{
+			return false;
+		}
+		if(blackPieces[i].type=='p')
+		{
+			return false;
+		}
+		if(blackPieces[i].type=='b')
+		{
+			blackBishopCount++;
+		}
+		else if(blackPieces[i].type=='n')
+		{
+			blackKnightCount++;
+		}
+		if(blackBishopCount==2||blackKnightCount==3||(blackBishopCount==1&&blackKnightCount==1))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+void Position::resolve_positionState()
+{
+	if(fiftyMoveRuleCounter==100)
+	{
+		positionState = positionstate_draw50;
+		return;
+	}
+	if(resolve_positionState_insufficientMaterial())
+	{
+		positionState = positionstate_drawInsufficientMaterial;
+		return;
+	}
+	piece currentPiece;
+	if(colorToMove=='w')
+	{
+		for(int i=0;i<whitePieces_L;i++)
+		{
+			currentPiece = whitePieces[i];
+			if(currentPiece.moves_L!=0)
+			{
+				positionState=positionstate_inplay;
+				return;
+			}
+		}
+		if(getTotalTargeters(getKingPtr('w')->squarePtr,'b')==0)
+		{
+			positionState=positionstate_drawStalemate;
+			return;
+		}
+		else
+		{
+			positionState=positionstate_blackWin;
+			return;
+		}
+	}
+	else
+	{
+		for(int i=0;i<blackPieces_L;i++)
+		{
+			currentPiece = blackPieces[i];
+			if(currentPiece.moves_L!=0)
+			{
+				positionState=positionstate_inplay;
+				return;
+			}
+		}
+		if(getTotalTargeters(getKingPtr('b')->squarePtr,'w')==0)
+		{
+			positionState=positionstate_drawStalemate;
+			return;
+		}
+		else
+		{
+			positionState=positionstate_whiteWin;
+			return;
+		}
+	}
+}
 void Position::resolve()
 {
 	//Targets
@@ -3122,6 +3253,7 @@ void Position::resolve()
 		resolve_moves('w');
 		resolve_moves('b');
 	}
+	resolve_positionState();
 }
 void Position::clean()
 {

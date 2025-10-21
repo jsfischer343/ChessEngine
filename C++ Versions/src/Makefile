@@ -1,8 +1,8 @@
 all:
-	g++ movetree.cc game.cc position.cc utilities.cc bluespiralv4.cpp -o bluespiralv4
+	g++ game.cc positiontree.cc position.cc utilities.cc bluespiralv4.cpp -o bluespiralv4
 	chmod +x bluespiralv4
 debug:
-	g++ -g movetree.cc game.cc position.cc utilities.cc bluespiralv4.cpp -o bluespiralv4
+	g++ -g game.cc positiontree.cc position.cc utilities.cc bluespiralv4.cpp -o bluespiralv4
 	chmod +x bluespiralv4
 	gdb -q ./bluespiralv4
 clean:

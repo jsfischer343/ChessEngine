@@ -95,15 +95,29 @@ class Position
 		};
 		short fiftyMoveRuleCounter = -1;
 		short moveCounter = -1;
+		int8_t positionState = 0;
+		enum PositionState
+		{
+			positionstate_inplay,
+			positionstate_draw50,
+			positionstate_drawStalemate,
+			positionstate_drawInsufficientMaterial,
+			positionstate_whiteWin,
+			positionstate_blackWin
+		};
 		
 		//FUNCTIONS
 		//-Constructors-
 		Position();
 		Position(const char* FENString);
 		Position(const Position& lastPosition, const move moveMade);
+	private:
 		void castlingConstructor(const Position& lastPosition, const int8_t castlingCode);
+	public:
 		Position(const Position* lastPosition, const move moveMade);
+	private:
 		void castlingConstructor(const Position* lastPosition, const int8_t castlingCode);
+	public:
 		~Position();
 
 		//-Get-
@@ -115,7 +129,7 @@ class Position
 		int getTotalMovers(square* squarePtr, char color);
 		char getPieceColor(square* squarePtr);
 		piece* getKingPtr(char color);
-		double instantEval();	//create a bias eval only using the current position and not taking into account game state
+		double instantEval();
 	private:
 			bool instantEval_passedPawn(int8_t rank, char color, int j);
 
@@ -152,6 +166,8 @@ class Position
 				void resolve_movesInCheck_knight_blocksAndCaptures(piece* kingPtr, piece* currentPiecePtr, piece* checkingPiece, int rankOffset, int fileOffset);
 				void resolve_movesInCheck_scan_blocksAndCaptures(piece* kingPtr, piece* currentPiecePtr, piece* checkingPiece, int rankDirection, int fileDirection);
 				void resolve_movesInCheck_scan_capturesOnly(piece* currentPiecePtr, piece* checkingPiece, int rankDirection, int fileDirection);
+			void resolve_positionState();
+				bool resolve_positionState_insufficientMaterial();
 		void clean();			//remove all targets and moves
 		
 		//-Piece Setup-

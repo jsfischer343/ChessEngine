@@ -14,74 +14,35 @@ void printMemoryUsage()
 	std::cout << "Peak memory usage: " << peakUsage << "MB" << std::endl;
 }
 
-void printGameResult(Game& gameObj)
+void printGameResult(int8_t gameState)
 {
-	if(gameObj.gameState==Game::gamestate_draw50)
+	switch(gameState)
 	{
-		std::cout << "Draw by 50 rule.\n";
-	}
-	else if(gameObj.gameState==Game::gamestate_drawStalemate)
-	{
-		std::cout << "Draw by stalemate.\n";
-	}
-	else if(gameObj.gameState==Game::gamestate_drawRepetition)
-	{
-		std::cout << "Draw by repetition.\n";
-	}
-	else if(gameObj.gameState==Game::gamestate_whiteWin)
-	{
-		std::cout << "White win.\n";
-	}
-	else if(gameObj.gameState==Game::gamestate_blackWin)
-	{
-		std::cout << "Black win.\n";
-	}
-}
-
-void runInteractiveGame_HumanVsHuman()
-{
-	bool validMove;
-	char* buffer = new char[10];
-	Game humanGame = Game();
-	while(humanGame.gameState==0)
-	{
-		humanGame.printBoard();
-
-		do
-		{
-			std::cout << "White to move\n";
-			std::cout << ">> ";
-			scanf("%s",buffer);
-			if(buffer[0]=='q')
-			{
-				delete[] buffer;
-				return;
-			}
-			validMove = humanGame.makeMove(humanGame.currentPosition->getMoveFromNotation(buffer));
-			if(validMove==false)
-				std::cout << "Invalid move\n";
-		} while(validMove==false);
-
-		humanGame.printBoard();
-		if(humanGame.gameState!=0)
+		case 0:
+			printf("Error 22\n");
 			break;
-		do
-		{
-			std::cout << "Black to move\n";
-			std::cout << ">> ";
-			scanf("%s",buffer);
-			if(buffer[0]=='q')
-			{
-				delete[] buffer;
-				return;
-			}
-			validMove = humanGame.makeMove(humanGame.currentPosition->getMoveFromNotation(buffer));
-			if(validMove==false)
-				std::cout << "Invalid move\n";
-		} while(validMove==false);
+		case 1:
+			printf("Draw by 50 move rule\n");
+			break;
+		case 2:
+			printf("Draw by stalemate.\n");
+			break;
+		case 3:
+			printf("Draw by insufficient material.\n");
+			break;
+		case 4:
+			printf("White win.\n");
+			break;
+		case 5:
+			printf("Black win.\n");
+			break;
+		case 6:
+			printf("Draw by threefold repetition.\n");
+			break;
+		default:
+			printf("Error 36\n");
+			break;
 	}
-	printGameResult(humanGame);
-	delete[] buffer;
 }
 
 void runInteractiveGame_HumanVsBot(char humanColor)
@@ -91,7 +52,7 @@ void runInteractiveGame_HumanVsBot(char humanColor)
 	Game botGame = Game();
 	if(humanColor=='w')
 	{
-		while(botGame.gameState==0)
+		while(botGame.getGameState()==0)
 		{
 			botGame.printBoard();
 			do
@@ -104,17 +65,18 @@ void runInteractiveGame_HumanVsBot(char humanColor)
 					delete[] buffer;
 					return;
 				}
-				validMove = botGame.makeMove(botGame.currentPosition->getMoveFromNotation(buffer));
+				validMove = botGame.makeMove(botGame.getCurrentPosition()->getMoveFromNotation(buffer));
 				if(validMove==false)
 					std::cout << "Invalid move\n";
 			} while(validMove==false);
-			if(botGame.gameState!=0)
+			if(botGame.getGameState()!=0)
 			{
 				botGame.printBoard();
 				break;
 			}
 			do
 			{
+				botGame.calculateBestMove();
 				botGame.printBestMove();
 				validMove = botGame.makeMove(botGame.bestMove);
 				if(validMove==false)
@@ -124,18 +86,18 @@ void runInteractiveGame_HumanVsBot(char humanColor)
 	}
 	else
 	{
-		while(botGame.gameState==0)
+		while(botGame.getGameState()==0)
 		{
-
 			do
 			{
+				botGame.calculateBestMove();
 				botGame.printBestMove();
 				validMove = botGame.makeMove(botGame.bestMove);
 				if(validMove==false)
 					std::cout << "Invalid move\n";
 			} while(validMove==false);
 			botGame.printBoard();
-			if(botGame.gameState!=0)
+			if(botGame.getGameState()!=0)
 				break;
 			do
 			{
@@ -147,13 +109,13 @@ void runInteractiveGame_HumanVsBot(char humanColor)
 					delete[] buffer;
 					return;
 				}
-				validMove = botGame.makeMove(botGame.currentPosition->getMoveFromNotation(buffer));
+				validMove = botGame.makeMove(botGame.getCurrentPosition()->getMoveFromNotation(buffer));
 				if(validMove==false)
 					std::cout << "Invalid move\n";
 			} while(validMove==false);
 		}
 	}
-	printGameResult(botGame);
+	printGameResult(botGame.getGameState());
 	delete[] buffer;
 }
 
@@ -166,27 +128,32 @@ int main()
 	//2. Debug
 
 	//debug1
-	char* buffer = new char[80];
-	std::cout << "FENString: ";
-	std::cin.getline(buffer,80);
-	while(buffer[0] != '1')
-	{
-		Position currentPosition = Position(buffer);
-		currentPosition.printBoard();
-		printf("Instant Eval: %f\n",currentPosition.instantEval());
-		std::cout << "FENString: ";
-		std::cin.getline(buffer,80);
-	}
-	delete[] buffer;
+	// Position* currentPosition;
+	// PositionTree* debugPositionTree;
+	// char* buffer = new char[80];
+	// std::cout << "FENString: ";
+	// std::cin.getline(buffer,80);
+	// while(buffer[0] != '1')
+	// {
+	// 	currentPosition = new Position(buffer);
+	// 	debugPositionTree = new PositionTree(currentPosition,2,true);
+	// 	debugPositionTree->printPositionTree(2);
+	// 	delete currentPosition;
+	// 	delete debugPositionTree;
+	// 	std::cout << "FENString: ";
+	// 	std::cin.getline(buffer,80);
+	// }
+	// delete[] buffer;
 
 	//debug2
-	//runInteractiveGame_HumanVsBot('b');
+	runInteractiveGame_HumanVsBot('b');
 
 	//debug3
 	// Position* currentPosition = new Position();
-	// MoveTree* movetreetest = new MoveTree(currentPosition,3,true);
-	// movetreetest->expandXNextBestBranches(500);
-	// movetreetest->printMoveTree();
+ //    PositionTree* movetreetest = new PositionTree(currentPosition,3,true);
+ //    movetreetest->expandXNextBestBranches(200);
+ //    movetreetest->debugFunction();
+ //    //movetreetest->makeMove(movetreetest->getCurrentPosition()->getMoveFromNotation("Pe3"));
 	// delete movetreetest;
 	// delete currentPosition;
 

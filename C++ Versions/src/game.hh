@@ -7,53 +7,28 @@
 #include <cstddef>
 #include <cctype>
 #include "position.hh"
-#include "movetree.hh"
+#include "positiontree.hh"
 
 #define TOTAL_PREVIOUS_POSITIONS 25	//Total previous position objects that will be stored (queue fashion), mostly for the purpose of determining draw by repetition
 
 class Game
 {
 	public:
-		//DATA
-		Position* currentPosition;
-		MoveTree* game_movetree;
-		move bestMove = move();
-		int gameState = 0;
-		enum GameState
-		{
-			gamestate_inplay,
-			gamestate_draw50,
-			gamestate_drawStalemate,
-			gamestate_drawRepetition,
-			gamestate_whiteWin,
-			gamestate_blackWin
-		};
-		int previousPositions_L;
-		Position** previousPositions; //Used to keep a record of previous positions for eval of 'repetition' type draws
-
-		//FUNCTIONS
-		//-Constructors-
+	//DATA
+		Position* startingPosition;
+		PositionTree* gamePositionTree;
+		move bestMove;
+	//FUNCTIONS
 		Game();
 		Game(const char* FENString);
 		~Game();
-		
-		//-Actions-
-		bool makeMove(const move moveMade);
 
-		//-Debug Information-
+		int8_t getGameState();
+		Position* getCurrentPosition();
 		void printBestMove();
+		void calculateBestMove();
+		bool makeMove(const move moveMade);
 		void printBoard();
-	private:
-		//-Comparision
-		bool positionIdentical(Position* position1, Position* position2);
-
-		//--Calculation--
-		void updateBestMove();
-
-		//-Game State-
-		void queuePreviousPosition(Position* previousPosition);
-		void resolveGameState();
-			bool resolveGameState_repetition();
 };
 
 #endif
