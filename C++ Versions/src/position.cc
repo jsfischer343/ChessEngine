@@ -199,17 +199,13 @@ Position::Position(const char* FENString)
 	}
 	else
 	{
-		if(FEN_currentChar=='a') enPassantFile=0;
-		if(FEN_currentChar=='b') enPassantFile=1;
-		if(FEN_currentChar=='c') enPassantFile=2;
-		if(FEN_currentChar=='d') enPassantFile=3;
-		if(FEN_currentChar=='e') enPassantFile=4;
-		if(FEN_currentChar=='f') enPassantFile=5;
-		if(FEN_currentChar=='g') enPassantFile=6;
-		if(FEN_currentChar=='h') enPassantFile=7;
+		enPassantFile = notationFile_TO_engineFile(FEN_currentChar);
+
 		FEN_charIndex++;
 		FEN_currentChar = FENString[FEN_charIndex];
-		enPassantRank = atoi(&FEN_currentChar);
+
+		enPassantRank = notationRank_TO_engineRank(FEN_currentChar);
+
 		FEN_charIndex=FEN_charIndex+2;
 		FEN_currentChar = FENString[FEN_charIndex];
 	}
@@ -250,8 +246,9 @@ Position::Position(const char* FENString)
 }
 Position::Position(const Position& lastPosition, const move moveMade)
 {
+//Pointer version of above constructor
 	setupMemory();
-	//DEEPCOPY
+	//-DEEPCOPY-
 	//Pieces
 	whitePieces_L = lastPosition.whitePieces_L;
 	blackPieces_L = lastPosition.blackPieces_L;
@@ -281,8 +278,25 @@ Position::Position(const Position& lastPosition, const move moveMade)
 		theBoard[blackPieces[i].rank][blackPieces[i].file].piecePtr = &blackPieces[i];
 		//Note: targeters and moves not copied
 	}
+	//
 
-	//Catch Castling Moves
+	//Remove extra pawn if last move was en passant
+	if(lastPosition.enPassantRank!=-1)
+	{
+		if(lastPosition.enPassantFile==moveMade.endFile && lastPosition.enPassantRank==moveMade.endRank)
+		{
+			if(moveMade.endRank==2)
+			{
+				removePiece(theBoard[3][moveMade.endFile].piecePtr);
+			}
+			else if(moveMade.endRank==5)
+			{
+				removePiece(theBoard[4][moveMade.endFile].piecePtr);
+			}
+		}
+	}
+
+	//Catch castling move (special case)
 	if(moveMade.startRank==7 && moveMade.startFile==4 &&
 	moveMade.endRank==7 && moveMade.endFile==6 &&
 	moveMade.endPieceType=='k')
@@ -307,8 +321,7 @@ Position::Position(const Position& lastPosition, const move moveMade)
 	{
 		castlingConstructor(lastPosition, queenside_black);
 	}
-
-	//Otherwise Normal Moves Steps
+	//otherwise steps for normal move
 	else
 	{
 		//Castling Flags
@@ -330,54 +343,34 @@ Position::Position(const Position& lastPosition, const move moveMade)
 			fiftyMoveRuleCounter = lastPosition.fiftyMoveRuleCounter+1;
 		}
 
+		//En passant
+		if(moveMade.endPieceType=='p')
+		{
+			if(moveMade.startRank==6 && moveMade.endRank==4)
+			{
+				enPassantRank = 5;
+				enPassantFile = moveMade.startFile;
+			}
+			else if(moveMade.startRank==1 && moveMade.endRank==3)
+			{
+				enPassantRank = 2;
+				enPassantFile = moveMade.startFile;
+			}
+		}
 
 		//Updates based on turn
 		if(lastPosition.colorToMove=='w')
 		{
 			moveCounter = lastPosition.moveCounter+0;
 			colorToMove = 'b';
-			//check castling flags based on last move to see if flags should be updated
-			if(castlingFlags[kingside_white] || castlingFlags[queenside_white])
-			{
-				if(moveMade.startRank==7 && moveMade.startFile==4)
-				{
-					castlingFlags[kingside_white] = false;
-					castlingFlags[queenside_white] = false;
-				}
-				if(moveMade.startRank==7 && moveMade.startFile==0)
-				{
-					castlingFlags[queenside_white] = false;
-				}
-				if(moveMade.startRank==7 && moveMade.startFile==7)
-				{
-					castlingFlags[kingside_white] = false;
-				}
-			}
 		}
 		else
 		{
 			moveCounter = lastPosition.moveCounter+1;
 			colorToMove = 'w';
-			//check castling flags based on last move to see if flags should be updated
-			if(castlingFlags[kingside_black] || castlingFlags[queenside_black])
-			{
-				if(moveMade.startRank==0 && moveMade.startFile==4)
-				{
-					castlingFlags[kingside_black] = false;
-					castlingFlags[queenside_black] = false;
-				}
-				if(moveMade.startRank==0 && moveMade.startFile==0)
-				{
-					castlingFlags[queenside_black] = false;
-				}
-				if(moveMade.startRank==0 && moveMade.startFile==7)
-				{
-					castlingFlags[kingside_black] = false;
-				}
-			}
 		}
 
-		//Make Move: update the board based on the 'moveMade'
+		//Make Move: Update the board based on the 'moveMade'
 		piece* pieceBeingMoved = theBoard[moveMade.startRank][moveMade.startFile].piecePtr;
 		char type = moveMade.endPieceType;
 		char color = pieceBeingMoved->color;
@@ -465,7 +458,7 @@ Position::Position(const Position* lastPosition, const move moveMade)
 {
 //Pointer version of above constructor
 	setupMemory();
-	//--DEEPCOPY--
+	//-DEEPCOPY-
 	//Pieces
 	whitePieces_L = lastPosition->whitePieces_L;
 	blackPieces_L = lastPosition->blackPieces_L;
@@ -495,8 +488,25 @@ Position::Position(const Position* lastPosition, const move moveMade)
 		theBoard[blackPieces[i].rank][blackPieces[i].file].piecePtr = &blackPieces[i];
 		//Note: targeters and moves not copied
 	}
+	//
 
-	//Catch Castling Moves
+	//Remove extra pawn if last move was en passant
+	if(lastPosition->enPassantRank!=-1)
+	{
+		if(lastPosition->enPassantFile==moveMade.endFile && lastPosition->enPassantRank==moveMade.endRank)
+		{
+			if(moveMade.endRank==2)
+			{
+				removePiece(theBoard[3][moveMade.endFile].piecePtr);
+			}
+			else if(moveMade.endRank==5)
+			{
+				removePiece(theBoard[4][moveMade.endFile].piecePtr);
+			}
+		}
+	}
+
+	//Catch castling move (special case)
 	if(moveMade.startRank==7 && moveMade.startFile==4 &&
 	moveMade.endRank==7 && moveMade.endFile==6 &&
 	moveMade.endPieceType=='k')
@@ -521,6 +531,7 @@ Position::Position(const Position* lastPosition, const move moveMade)
 	{
 		castlingConstructor(lastPosition, queenside_black);
 	}
+	//otherwise steps for normal move
 	else
 	{
 		//Castling Flags
@@ -542,50 +553,31 @@ Position::Position(const Position* lastPosition, const move moveMade)
 			fiftyMoveRuleCounter = lastPosition->fiftyMoveRuleCounter+1;
 		}
 
+		//En passant
+		if(moveMade.endPieceType=='p')
+		{
+			if(moveMade.startRank==6 && moveMade.endRank==4)
+			{
+				enPassantRank = 5;
+				enPassantFile = moveMade.startFile;
+			}
+			else if(moveMade.startRank==1 && moveMade.endRank==3)
+			{
+				enPassantRank = 2;
+				enPassantFile = moveMade.startFile;
+			}
+		}
+
 		//Updates based on turn
 		if(lastPosition->colorToMove=='w')
 		{
 			moveCounter = lastPosition->moveCounter+0;
 			colorToMove = 'b';
-			//check castling flags based on last move to see if flags should be updated
-			if(castlingFlags[kingside_white] || castlingFlags[queenside_white])
-			{
-				if(moveMade.startRank==7 && moveMade.startFile==4)
-				{
-					castlingFlags[kingside_white] = false;
-					castlingFlags[queenside_white] = false;
-				}
-				if(moveMade.startRank==7 && moveMade.startFile==0)
-				{
-					castlingFlags[queenside_white] = false;
-				}
-				if(moveMade.startRank==7 && moveMade.startFile==7)
-				{
-					castlingFlags[kingside_white] = false;
-				}
-			}
 		}
 		else
 		{
 			moveCounter = lastPosition->moveCounter+1;
 			colorToMove = 'w';
-			//check castling flags based on last move to see if flags should be updated
-			if(castlingFlags[kingside_black] || castlingFlags[queenside_black])
-			{
-				if(moveMade.startRank==0 && moveMade.startFile==4)
-				{
-					castlingFlags[kingside_black] = false;
-					castlingFlags[queenside_black] = false;
-				}
-				if(moveMade.startRank==0 && moveMade.startFile==0)
-				{
-					castlingFlags[queenside_black] = false;
-				}
-				if(moveMade.startRank==0 && moveMade.startFile==7)
-				{
-					castlingFlags[kingside_black] = false;
-				}
-			}
 		}
 
 		//Make Move: Update the board based on the 'moveMade'
@@ -944,9 +936,9 @@ char* Position::getNotation(const move& moveInQuestion)
 						if(whitePieces[i].moves[j]->rank == moveInQuestion.endRank && whitePieces[i].moves[j]->file == moveInQuestion.endFile)
 						{
 							if(whitePieces[i].rank == moveInQuestion.startRank)
-								rankDisambig = true;
-							else
 								fileDisambig = true;
+							else
+								rankDisambig = true;
 						}
 					}
 				}
@@ -2101,29 +2093,51 @@ void Position::resolve_pins_scan(piece* kingPtr, int rankDirection, int fileDire
 			{
 				if(currentSquarePtr->piecePtr->color!=kingColor)
 				{
-					if(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r')
+					if((rankDirection==1 || rankDirection==-1) && (fileDirection==0)) //file pins
 					{
-						if((rankDirection==1 || rankDirection==-1) && (fileDirection==0)) //file pin
+						if(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r')
 						{
 							tempSavedPiecePtr->pinned[pin_file]=true;
 							break;
 						}
-						else if((fileDirection==1 || fileDirection==-1) && (rankDirection==0)) //rank pin
+						else
+						{
+							break;
+						}
+					}
+					else if((fileDirection==1 || fileDirection==-1) && (rankDirection==0)) //rank pins
+					{
+						if(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='r')
 						{
 							tempSavedPiecePtr->pinned[pin_rank]=true;
 							break;
 						}
+						else
+						{
+							break;
+						}
 					}
-					if(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b')
+					else if((rankDirection==1 && fileDirection==1) || (rankDirection==-1 && fileDirection==-1)) //positive diagonal pins
 					{
-						if((rankDirection==1 && fileDirection==1) || (rankDirection==-1 && fileDirection==-1)) //positive diagonal pin
+						if(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b')
 						{
 							tempSavedPiecePtr->pinned[pin_positiveDiag]=true;
 							break;
 						}
-						else if((rankDirection==1 && fileDirection==-1) || (rankDirection==-1 && fileDirection==1)) //negative diagonal pin
+						else
+						{
+							break;
+						}
+					}
+					else if((rankDirection==1 && fileDirection==-1) || (rankDirection==-1 && fileDirection==1)) //negative diagonal pins
+					{
+						if(currentSquarePtr->piecePtr->type=='q' || currentSquarePtr->piecePtr->type=='b')
 						{
 							tempSavedPiecePtr->pinned[pin_negativeDiag]=true;
+							break;
+						}
+						else
+						{
 							break;
 						}
 					}
@@ -2735,10 +2749,9 @@ void Position::resolve_movesInCheck(char color)
 					{
 						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
 						{
-							if(onBoard(rank-1,file-1) && rank-1==checkingPieceRank && file-1==checkingPieceFile)
+							if(onBoard(rank-1,file-1) && ((rank-1==checkingPieceRank && file-1==checkingPieceFile) || (enPassantFile==file-1 && enPassantRank==rank-1)))
 							{
-								if((theBoard[rank-1][file-1].piecePtr!=NULL || (enPassantFile==file-1 && enPassantRank==rank-1)) &&
-								getPieceColor(&theBoard[rank-1][file-1])!='w')
+								if(getPieceColor(&theBoard[rank-1][file-1])!='w')
 								{
 									pushMove(currentPiecePtr,&theBoard[rank-1][file-1]);
 								}
@@ -2746,10 +2759,9 @@ void Position::resolve_movesInCheck(char color)
 						}
 						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
 						{
-							if(onBoard(rank-1,file+1) && rank-1==checkingPieceRank && file+1==checkingPieceFile)
+							if(onBoard(rank-1,file+1) && ((rank-1==checkingPieceRank && file+1==checkingPieceFile) || (enPassantFile==file+1 && enPassantRank==rank-1)))
 							{
-								if((theBoard[rank-1][file+1].piecePtr!=NULL || (enPassantFile==file+1 && enPassantRank==rank-1)) &&
-								getPieceColor(&theBoard[rank-1][file+1])!='w')
+								if(getPieceColor(&theBoard[rank-1][file+1])!='w')
 								{
 									pushMove(currentPiecePtr,&theBoard[rank-1][file+1]);
 								}
@@ -2845,8 +2857,7 @@ void Position::resolve_movesInCheck(char color)
 						{
 							if(onBoard(rank-1,file-1) && rank-1==checkingPieceRank && file-1==checkingPieceFile)
 							{
-								if((theBoard[rank-1][file-1].piecePtr!=NULL || (enPassantFile==file-1 && enPassantRank==rank-1)) &&
-								getPieceColor(&theBoard[rank-1][file-1])!='w')
+								if(getPieceColor(&theBoard[rank-1][file-1])!='w')
 								{
 									pushMove(currentPiecePtr,&theBoard[rank-1][file-1]);
 								}
@@ -2856,8 +2867,7 @@ void Position::resolve_movesInCheck(char color)
 						{
 							if(onBoard(rank-1,file+1) && rank-1==checkingPieceRank && file+1==checkingPieceFile)
 							{
-								if((theBoard[rank-1][file+1].piecePtr!=NULL || (enPassantFile==file+1 && enPassantRank==rank-1)) &&
-								getPieceColor(&theBoard[rank-1][file+1])!='w')
+								if(getPieceColor(&theBoard[rank-1][file+1])!='w')
 								{
 									pushMove(currentPiecePtr,&theBoard[rank-1][file+1]);
 								}
@@ -2970,10 +2980,9 @@ void Position::resolve_movesInCheck(char color)
 					{
 						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_positiveDiag])
 						{
-							if(onBoard(rank+1,file-1) && rank+1==checkingPieceRank && file-1==checkingPieceFile)
+							if(onBoard(rank+1,file-1) && ((rank+1==checkingPieceRank && file-1==checkingPieceFile) || (enPassantFile==file-1 && enPassantRank==rank+1)))
 							{
-								if((theBoard[rank+1][file-1].piecePtr!=NULL || (enPassantFile==file-1 && enPassantRank==rank+1)) &&
-								getPieceColor(&theBoard[rank+1][file-1])!='w')
+								if(getPieceColor(&theBoard[rank+1][file-1])!='b')
 								{
 									pushMove(currentPiecePtr,&theBoard[rank+1][file-1]);
 								}
@@ -2981,10 +2990,9 @@ void Position::resolve_movesInCheck(char color)
 						}
 						if(!currentPiecePtr->pinned[pin_rank] && !currentPiecePtr->pinned[pin_file] && !currentPiecePtr->pinned[pin_negativeDiag])
 						{
-							if(onBoard(rank+1,file+1) && rank+1==checkingPieceRank && file+1==checkingPieceFile)
+							if(onBoard(rank+1,file+1) && ((rank+1==checkingPieceRank && file+1==checkingPieceFile) || (enPassantFile==file+1 && enPassantRank==rank+1)))
 							{
-								if((theBoard[rank+1][file+1].piecePtr!=NULL || (enPassantFile==file+1 && enPassantRank==rank+1)) &&
-								getPieceColor(&theBoard[rank+1][file+1])!='w')
+								if(getPieceColor(&theBoard[rank+1][file+1])!='b')
 								{
 									pushMove(currentPiecePtr,&theBoard[rank+1][file+1]);
 								}
@@ -3079,8 +3087,7 @@ void Position::resolve_movesInCheck(char color)
 						{
 							if(onBoard(rank+1,file-1) && rank+1==checkingPieceRank && file-1==checkingPieceFile)
 							{
-								if((theBoard[rank+1][file-1].piecePtr!=NULL || (enPassantFile==file-1 && enPassantRank==rank+1)) &&
-								getPieceColor(&theBoard[rank+1][file-1])!='w')
+								if(getPieceColor(&theBoard[rank+1][file-1])!='b')
 								{
 									pushMove(currentPiecePtr,&theBoard[rank+1][file-1]);
 								}
@@ -3090,8 +3097,7 @@ void Position::resolve_movesInCheck(char color)
 						{
 							if(onBoard(rank+1,file+1) && rank+1==checkingPieceRank && file+1==checkingPieceFile)
 							{
-								if((theBoard[rank+1][file+1].piecePtr!=NULL || (enPassantFile==file+1 && enPassantRank==rank+1)) &&
-								getPieceColor(&theBoard[rank+1][file+1])!='w')
+								if(getPieceColor(&theBoard[rank+1][file+1])!='b')
 								{
 									pushMove(currentPiecePtr,&theBoard[rank+1][file+1]);
 								}
@@ -3317,7 +3323,7 @@ void Position::removePiece(piece* piecePtr)
 
 	//remove targets
 	while(popTarget(piecePtr));
-	//remove targets
+	//remove moves
 	while(popMove(piecePtr));
 	piecePtr->rank=-1;
 	piecePtr->file=-1;
@@ -3582,9 +3588,9 @@ bool Position::checkCanCastle(int castlingEnumVal)
 			}
 		}
 	}
-	if(castlingEnumVal == kingside_black)
+	else if(castlingEnumVal == kingside_black)
 	{
-		if(castlingFlags[kingside_white] &&					//castling flag is valid
+		if(castlingFlags[kingside_black] &&					//castling flag is valid
 		getPieceColor(&theBoard[0][4]) == 'b' &&
 		getPieceColor(&theBoard[0][7]) == 'b' &&
 		theBoard[0][5].piecePtr==NULL &&
@@ -3602,7 +3608,7 @@ bool Position::checkCanCastle(int castlingEnumVal)
 	}
 	else if(castlingEnumVal == queenside_black)
 	{
-		if(castlingFlags[queenside_white] &&					//castling flag is valid
+		if(castlingFlags[queenside_black] &&					//castling flag is valid
 		getPieceColor(&theBoard[0][4]) == 'b' &&
 		getPieceColor(&theBoard[0][0]) == 'b' &&
 		theBoard[0][3].piecePtr==NULL &&
