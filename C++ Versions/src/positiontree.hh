@@ -11,6 +11,7 @@
 #define PROGRAM_MEMORY_LIMIT 820*1024 //820MiB
 #define MAX_DEPTH 5 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
 #define PREVIOUS_NODE_QUEUE_SIZE 30 //Number of previous moves that will be saved (mostly for evaluating draw by repetition)
+#define EVALUATION_EQUIVALENCY_THRESHOLD 0.005 //The differential threshold that is used to determine if two moves have 'essentially' equal evaluation
 
 class PositionTree
 {
@@ -24,9 +25,9 @@ class PositionTree
 			Position* position;
 			move moveMade;
             int depth;
-			double instantEval = 0; //A biased evaluation that only takes the current position into account
-			double branchRecursiveAvg = 0; //The average of all this node's childrens' branchRecursiveAverages
-			double branchBest = 0; //The best "response" if this move (node) was selected
+			float instantEval = 0; //A biased evaluation that only takes the current position into account
+			float branchRecursiveAvg = 0; //The average of all this node's childrens' branchRecursiveAverages
+			float branchBest = 0; //The best "response" if this move (node) was selected
 			bool drawByRepetition = false; //Since draw by repetition is special in that you need contextual information to determine it, this must be determined for each node in relation to the tree rather than as a property of the 'position' object.
 			//-Children-
 			int children_L = 0;
@@ -78,6 +79,7 @@ class PositionTree
     public:
 	//--Get--
 		move getBestMove();
+		move getBestRandomMove(); //if there are multiple moves with less than EVALUATION_EQUIVALENCY_THRESHOLD of difference then randomly pick one
 		int8_t getGameState();
 		Position* getCurrentPosition();
 		bool isValidMove(move moveToBeMade);

@@ -68,7 +68,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive_computeEvals
 			node->children[i]->parent = node;
 			node->children[i]->position = resultingPosition;
 			node->children[i]->moveMade = currentMoveArr[i];
-			//node->children[i]->instantEval = resultingPosition->instantEval();
+			//node->children[i]->instantEval = resultingPosition->getInstantEval();
 			node->children[i]->depth = node->children[i]->parent->depth+1;
 			node->children[i] = generatePositionTreeRecursive_computeEvalsNo(node->children[i], depth-1);
 		}
@@ -134,7 +134,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive_computeEvals
 			}
 			node->children[i]->depth = node->children[i]->parent->depth+1;
 			node->children[i] = generatePositionTreeRecursive_computeEvalsYes(node->children[i], depth-1);
-			node->branchRecursiveAvg += (double)node->children[i]->branchRecursiveAvg;
+			node->branchRecursiveAvg += node->children[i]->branchRecursiveAvg;
 		}
 		node->branchRecursiveAvg = node->branchRecursiveAvg/node->children_L;
 		sortChildrenByBranchBest(node);
@@ -413,6 +413,14 @@ void PositionTree::treeMemoryOverflow()
 
 //--Get--
 move PositionTree::getBestMove()
+{
+	if(this->root->children_L==0)
+	{
+		return move();
+	}
+	return this->root->children[0]->moveMade; //The best move is assumed to be the first move since expandNextBestBranch() and generatePositionTreeRecursive_computeEvalsYes() will both sort the tree as it generates it.
+}
+move PositionTree::getBestRandomMove()
 {
 	if(this->root->children_L==0)
 	{

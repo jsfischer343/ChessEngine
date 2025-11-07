@@ -39,7 +39,7 @@ void Game::printBestMove()
 
 void Game::calculateBestMove()
 {
-	gamePositionTree->expandXNextBestBranches(200);
+	gamePositionTree->expandXNextBestBranches(400);
 	bestMove = gamePositionTree->getBestMove();
 }
 

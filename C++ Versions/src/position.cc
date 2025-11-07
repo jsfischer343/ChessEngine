@@ -238,15 +238,9 @@ Position::Position(const char* FENString)
 	delete[] tempBuffer;
 	sanityCheck();
 	resolve();
-	//determine ability to castle
-	canCastle[kingside_white] = checkCanCastle(kingside_white);
-	canCastle[queenside_white] = checkCanCastle(queenside_white);
-	canCastle[kingside_black] = checkCanCastle(kingside_black);
-	canCastle[queenside_black] = checkCanCastle(queenside_black);
 }
 Position::Position(const Position& lastPosition, const move moveMade)
 {
-//Pointer version of above constructor
 	setupMemory();
 	//-DEEPCOPY-
 	//Pieces
@@ -378,11 +372,6 @@ Position::Position(const Position& lastPosition, const move moveMade)
 		initPiece(moveMade.endRank,moveMade.endFile,type,color);
 
 		resolve();
-		//determine ability to castle
-		canCastle[kingside_white] = checkCanCastle(kingside_white);
-		canCastle[queenside_white] = checkCanCastle(queenside_white);
-		canCastle[kingside_black] = checkCanCastle(kingside_black);
-		canCastle[queenside_black] = checkCanCastle(queenside_black);
 	}
 }
 void Position::castlingConstructor(const Position& lastPosition, const int8_t castlingCode)
@@ -448,15 +437,9 @@ void Position::castlingConstructor(const Position& lastPosition, const int8_t ca
 		initPiece(0,3,'r','b');
 	}
 	resolve();
-	//determine ability to castle
-	canCastle[kingside_white] = checkCanCastle(kingside_white);
-	canCastle[queenside_white] = checkCanCastle(queenside_white);
-	canCastle[kingside_black] = checkCanCastle(kingside_black);
-	canCastle[queenside_black] = checkCanCastle(queenside_black);
 }
 Position::Position(const Position* lastPosition, const move moveMade)
 {
-//Pointer version of above constructor
 	setupMemory();
 	//-DEEPCOPY-
 	//Pieces
@@ -588,11 +571,6 @@ Position::Position(const Position* lastPosition, const move moveMade)
 		initPiece(moveMade.endRank,moveMade.endFile,type,color);
 
 		resolve();
-		//determine ability to castle
-		canCastle[kingside_white] = checkCanCastle(kingside_white);
-		canCastle[queenside_white] = checkCanCastle(queenside_white);
-		canCastle[kingside_black] = checkCanCastle(kingside_black);
-		canCastle[queenside_black] = checkCanCastle(queenside_black);
 	}
 }
 void Position::castlingConstructor(const Position* lastPosition, const int8_t castlingCode)
@@ -657,11 +635,6 @@ void Position::castlingConstructor(const Position* lastPosition, const int8_t ca
 		initPiece(0,3,'r','b');
 	}
 	resolve();
-	//determine ability to castle
-	canCastle[kingside_white] = checkCanCastle(kingside_white);
-	canCastle[queenside_white] = checkCanCastle(queenside_white);
-	canCastle[kingside_black] = checkCanCastle(kingside_black);
-	canCastle[queenside_black] = checkCanCastle(queenside_black);
 }
 Position::~Position()
 {
@@ -1426,7 +1399,7 @@ Position::piece* Position::getKingPtr(char color)
 	}
 	return NULL;
 }
-double Position::getInstantEval()
+float Position::getInstantEval()
 {
 	if(positionState==positionstate_draw50||positionState==positionstate_drawStalemate||positionState==positionstate_drawInsufficientMaterial)
 		return 0;
@@ -1435,23 +1408,7 @@ double Position::getInstantEval()
 	if(positionState==positionstate_whiteWin)
 		return 1000;
 
-	double sum = 0;
-	sum+=(double)positionEvaluation.material_pawns;
-	sum+=(double)positionEvaluation.material_knights;
-	sum+=(double)positionEvaluation.material_bishops;
-	sum+=(double)positionEvaluation.material_rooks;
-	sum+=(double)positionEvaluation.material_queens;
-	sum+=(double)positionEvaluation.positional_squarecontrol_base;
-	sum+=(double)positionEvaluation.positional_squarecontrol_king_defensive;
-	sum+=(double)positionEvaluation.positional_squarecontrol_king_offensive;
-	sum+=(double)positionEvaluation.positional_squarecontrol_pawns;
-	sum+=(double)positionEvaluation.positional_squarecontrol_knights;
-	sum+=(double)positionEvaluation.positional_squarecontrol_bishops;
-	sum+=(double)positionEvaluation.positional_squarecontrol_rooks;
-	sum+=(double)positionEvaluation.positional_squarecontrol_queens;
-	sum+=(double)positionEvaluation.positional_pawns_notpassed;
-	sum+=(double)positionEvaluation.positional_pawns_passed;
-	return sum;
+	return positionEvaluation.total;
 }
 
 //-Debug Information-
@@ -1512,6 +1469,7 @@ void Position::printInstantEvalBreakdown()
 	positionalEval+=positionEvaluation.positional_pawns_passed;
 
 	printf("---Instant Eval Breakdown---\n");
+	printf("Total: %f\n\n",positionEvaluation.total);
 	printf("Material Total: %f\n",materialEval);
 	printf("Positional Total: %f\n\n",positionalEval);
 	printf("-Square Control-\n");
@@ -1641,6 +1599,7 @@ bool Position::adjacentToKing(int8_t rank, int8_t file, Position::piece* kingPtr
 		return false;
 }
 
+//-Memory-
 void Position::setupMemory()
 {
 	//create space for storing piece information for this position
@@ -1805,8 +1764,7 @@ void Position::resolve_targets(char color)
 			}
 		}
 	}
-
-	if(color=='b')
+	else if(color=='b')
 	{
 	//Black
 		for(int pieceIterator=0;pieceIterator<MAX_PIECES;pieceIterator++)
@@ -3364,6 +3322,23 @@ void Position::resolve_instantEval()
 			}
 		}
 	}
+
+	//calculate total
+	positionEvaluation.total+=positionEvaluation.material_pawns;
+	positionEvaluation.total+=positionEvaluation.material_knights;
+	positionEvaluation.total+=positionEvaluation.material_bishops;
+	positionEvaluation.total+=positionEvaluation.material_rooks;
+	positionEvaluation.total+=positionEvaluation.material_queens;
+	positionEvaluation.total+=positionEvaluation.positional_squarecontrol_base;
+	positionEvaluation.total+=positionEvaluation.positional_squarecontrol_king_defensive;
+	positionEvaluation.total+=positionEvaluation.positional_squarecontrol_king_offensive;
+	positionEvaluation.total+=positionEvaluation.positional_squarecontrol_pawns;
+	positionEvaluation.total+=positionEvaluation.positional_squarecontrol_knights;
+	positionEvaluation.total+=positionEvaluation.positional_squarecontrol_bishops;
+	positionEvaluation.total+=positionEvaluation.positional_squarecontrol_rooks;
+	positionEvaluation.total+=positionEvaluation.positional_squarecontrol_queens;
+	positionEvaluation.total+=positionEvaluation.positional_pawns_notpassed;
+	positionEvaluation.total+=positionEvaluation.positional_pawns_passed;
 }
 void Position::resolve()
 {
@@ -3392,6 +3367,13 @@ void Position::resolve()
 		resolve_moves('b');
 	}
 	resolve_positionState();
+
+	//determine ability to castle
+	canCastle[kingside_white] = checkCanCastle(kingside_white);
+	canCastle[queenside_white] = checkCanCastle(queenside_white);
+	canCastle[kingside_black] = checkCanCastle(kingside_black);
+	canCastle[queenside_black] = checkCanCastle(queenside_black);
+
 	resolve_instantEval();
 }
 void Position::clean()

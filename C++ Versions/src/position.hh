@@ -90,6 +90,7 @@ class Position
 			float positional_squarecontrol_queens = 0;
 			float positional_pawns_notpassed = 0;
 			float positional_pawns_passed = 0;
+			float total = 0;
 		};
 		typedef struct square square;
 		typedef struct piece piece;
@@ -142,7 +143,7 @@ class Position
 		Position(const Position& lastPosition, const move moveMade);
 		Position(const Position* lastPosition, const move moveMade);
 	private:
-		void castlingConstructor(const Position& lastPosition, const int8_t castlingCode);
+		void castlingConstructor(const Position& lastPosition, const int8_t castlingCode); //used to finish up construction when the last move was castling
 		void castlingConstructor(const Position* lastPosition, const int8_t castlingCode);
 	public:
 		~Position();
@@ -156,9 +157,7 @@ class Position
 		int getTotalMovers(square* squarePtr, char color);
 		char getPieceColor(square* squarePtr);
 		piece* getKingPtr(char color);
-		double getInstantEval();
-	private:
-			bool instantEval_passedPawn(int8_t rank, char color, int j);
+		float getInstantEval();
 
 	public:
 		//-Debug Information-
@@ -173,23 +172,24 @@ class Position
 		bool adjacentToKing(int8_t rank, int8_t file, piece* kingPtr);
 		
 	private:
+		//-Memory-
 		void setupMemory();
 		void cleanupMemory();
 		void sanityCheck();		//check that the position is legal
 		
 		//-Position Calculation-
 		void resolve();			//resolve all targets, moves, and compute instant evaluation
-			void resolve_targets(char color);
+			void resolve_targets(char color); //adds targets for pieces in whitePieces and blackPieces array and simultaneously adds targeters to the squares it runs into to the squares on theBoard
 				void resolve_targets_scan(piece* currentPiecePtr, int8_t startingRank, int8_t startingFile, int rankDirection, int fileDirection); // rank/fileDirection = -1, 0, or 1
 				void resolve_targets_king(piece* kingPtr, int8_t rank, int8_t file);
 			void resolve_pins(char color);
 				void resolve_pins_scan(piece* kingPtr, int rankDirection, int fileDirection);
-			void resolve_moves(char color);
+			void resolve_moves(char color); //same thing as targets but it determines if the piece can actually move there based on pins
 				void resolve_moves_whiteKing(piece* kingPtr, int8_t rank, int8_t file);
 				void resolve_moves_blackKing(piece* kingPtr, int8_t rank, int8_t file);
 				void resolve_moves_knight(piece* currentPiecePtr, int rankOffset, int fileOffset);
 				void resolve_moves_scan(piece* currentPiecePtr, int8_t startingRank, int8_t startingFile, int rankDirection, int fileDirection);
-			void resolve_movesInCheck(char color);
+			void resolve_movesInCheck(char color); //similar to resolve_moves() but skips moves that do not resolve check
 				bool resolve_movesInCheck_blocksCheck(const piece* kingPtr, const piece* checkingPiecePtr, int8_t endRank, int8_t endFile);
 				void resolve_movesInCheck_knight_capturesOnly(piece* currentPiecePtr, piece* checkingPiece, int rankOffset, int fileOffset);
 				void resolve_movesInCheck_knight_blocksAndCaptures(piece* kingPtr, piece* currentPiecePtr, piece* checkingPiece, int rankOffset, int fileOffset);
