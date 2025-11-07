@@ -1482,7 +1482,7 @@ void Position::printBoard()
 		printf("\n\n\n");
 	}
 }
-void Position::printStats()
+void Position::printInfo()
 {
 	printf("Color To Move: %c\n",colorToMove);
 	printf("Castling Flags: [%d,%d,%d,%d]\n",castlingFlags[kingside_white],castlingFlags[queenside_white],castlingFlags[kingside_black],castlingFlags[queenside_black]);
@@ -3164,7 +3164,7 @@ void Position::resolve_instantEval()
 	for(int i=0;i<MAX_PIECES;i++)
 	{
 		currentPiece = &whitePieces[i];
-		if(currentPiece->type=='\0')
+		if(currentPiece->type=='\0' || currentPiece->type=='k')
 			continue;
 		if(currentPiece->type=='q')
 			positionEvaluation.material_queens+=9;
@@ -3180,7 +3180,7 @@ void Position::resolve_instantEval()
 	for(int i=0;i<MAX_PIECES;i++)
 	{
 		currentPiece = &blackPieces[i];
-		if(currentPiece->type=='\0')
+		if(currentPiece->type=='\0' || currentPiece->type=='k')
 			continue;
 		if(currentPiece->type=='q')
 			positionEvaluation.material_queens-=9;
@@ -3193,18 +3193,27 @@ void Position::resolve_instantEval()
 		if(currentPiece->type=='p')
 			positionEvaluation.material_pawns-=1;
 	}
+
 	//Positional
 	int tempWhiteTargeters;
 	int tempBlackTargeters;
-	double tempPieceValue;
 	char tempPieceType;
 	piece* kingPtrWhite = getKingPtr('w');
 	piece* kingPtrBlack = getKingPtr('b');
+	float turnBasedBonusWhite = 1;
+	float turnBasedBonusBlack = 1;
+	if(colorToMove=='w')
+	{
+		turnBasedBonusWhite = TURN_BASED_CONTROL_BONUS;
+	}
+	else
+	{
+		turnBasedBonusBlack = TURN_BASED_CONTROL_BONUS;
+	}
 	for(int i=0;i<8;i++)
 	{
 		for(int j=0;j<8;j++)
 		{
-			tempPieceValue=0;
 			if(getPieceColor(&theBoard[i][j])!='\0') //protection against null pointer dereference error
 			{
 				tempPieceType=theBoard[i][j].piecePtr->type;
@@ -3219,142 +3228,137 @@ void Position::resolve_instantEval()
 			{
 				//-general-
 				if(tempPieceType=='q')
-					positionEvaluation.positional_squarecontrol_queens+=(9*PIECE_CONTROL_WEIGHT);
+					positionEvaluation.positional_squarecontrol_queens+=(9*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
 				else if(tempPieceType=='r')
 				{
-					positionEvaluation.positional_squarecontrol_rooks+=(5*PIECE_CONTROL_WEIGHT);
+					positionEvaluation.positional_squarecontrol_rooks+=(5*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
 				}
 				else if(tempPieceType=='b')
 				{
-					positionEvaluation.positional_squarecontrol_bishops+=(3*PIECE_CONTROL_WEIGHT);
+					positionEvaluation.positional_squarecontrol_bishops+=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
 				}
 				else if(tempPieceType=='n')
 				{
-					positionEvaluation.positional_squarecontrol_knights+=(3*PIECE_CONTROL_WEIGHT);
+					positionEvaluation.positional_squarecontrol_knights+=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
 				}
 				else if(tempPieceType=='p')
 				{
-					positionEvaluation.positional_squarecontrol_pawns+=(1*PIECE_CONTROL_WEIGHT);
+					positionEvaluation.positional_squarecontrol_pawns+=(1*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
 				}
 				positionEvaluation.positional_squarecontrol_base+=SQUARE_CONTROL_WEIGHT;
 
 				//-king-
 				if(adjacentToKing((int8_t)i,(int8_t)j,kingPtrWhite))
 				{
-					positionEvaluation.positional_squarecontrol_king_defensive+=KING_ADJACENT_SQUARE_CONTROL_WEIGHT; //bonus for defending squares around white king
+					positionEvaluation.positional_squarecontrol_king_defensive+=KING_ADJACENT_SQUARE_CONTROL_WEIGHT_DEFENSIVE*turnBasedBonusWhite; //bonus for defending squares around white king
 				}
 				if(adjacentToKing((int8_t)i,(int8_t)j,kingPtrBlack))
 				{
-					positionEvaluation.positional_squarecontrol_king_offensive+=KING_ADJACENT_SQUARE_CONTROL_WEIGHT; //bonus for controlling squares around enemy king
+					positionEvaluation.positional_squarecontrol_king_offensive+=KING_ADJACENT_SQUARE_CONTROL_WEIGHT_OFFENSIVE*turnBasedBonusWhite; //bonus for controlling squares around enemy king
 				}
 			}
 			else if(tempWhiteTargeters<tempBlackTargeters)
 			{
 				//-general-
 				if(tempPieceType=='q')
-					positionEvaluation.positional_squarecontrol_queens-=(9*PIECE_CONTROL_WEIGHT);
+					positionEvaluation.positional_squarecontrol_queens-=(9*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
 				else if(tempPieceType=='r')
 				{
-					positionEvaluation.positional_squarecontrol_rooks-=(5*PIECE_CONTROL_WEIGHT);
+					positionEvaluation.positional_squarecontrol_rooks-=(5*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
 				}
 				else if(tempPieceType=='b')
 				{
-					positionEvaluation.positional_squarecontrol_bishops-=(3*PIECE_CONTROL_WEIGHT);
+					positionEvaluation.positional_squarecontrol_bishops-=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
 				}
 				else if(tempPieceType=='n')
 				{
-					positionEvaluation.positional_squarecontrol_knights-=(3*PIECE_CONTROL_WEIGHT);
+					positionEvaluation.positional_squarecontrol_knights-=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
 				}
 				else if(tempPieceType=='p')
 				{
-					positionEvaluation.positional_squarecontrol_pawns-=(1*PIECE_CONTROL_WEIGHT);
+					positionEvaluation.positional_squarecontrol_pawns-=(1*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
 				}
-				positionEvaluation.positional_squarecontrol_base+=SQUARE_CONTROL_WEIGHT;
+				positionEvaluation.positional_squarecontrol_base-=SQUARE_CONTROL_WEIGHT;
 
 				//-king-
 				if(adjacentToKing((int8_t)i,(int8_t)j,kingPtrWhite))
 				{
-					positionEvaluation.positional_squarecontrol_king_offensive-=KING_ADJACENT_SQUARE_CONTROL_WEIGHT; //bonus for controlling squares around enemy king
+					positionEvaluation.positional_squarecontrol_king_offensive-=KING_ADJACENT_SQUARE_CONTROL_WEIGHT_OFFENSIVE*turnBasedBonusBlack; //bonus for controlling squares around enemy king
 				}
 				if(adjacentToKing((int8_t)i,(int8_t)j,kingPtrBlack))
 				{
-					positionEvaluation.positional_squarecontrol_king_defensive-=KING_ADJACENT_SQUARE_CONTROL_WEIGHT; //bonus for defending squares around black king
+					positionEvaluation.positional_squarecontrol_king_defensive-=KING_ADJACENT_SQUARE_CONTROL_WEIGHT_DEFENSIVE*turnBasedBonusBlack; //bonus for defending squares around black king
 				}
 			}
+
 			//additional positional analysis
-			if(tempWhiteTargeters>=tempBlackTargeters)
+			//pawns
+			if(getPieceColor(&theBoard[i][j])=='w')
 			{
-				//pawns
-				if(getPieceColor(&theBoard[i][j])=='w')
+				if(tempPieceType=='p')
 				{
-					if(tempPieceType=='p')
+					if(i==5)
 					{
-						if(i==5)
-						{
-							positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_1;
-							if(resolve_instantEval_passedPawn(5,'w',j))
-								positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_1;
-						}
-						else if(i==4)
-						{
-							positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_2;
-							if(resolve_instantEval_passedPawn(4,'w',j))
-								positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_2;
-						}
-						else if(i==3)
-						{
-							positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_3;
-							if(resolve_instantEval_passedPawn(3,'w',j))
-								positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_3;
-						}
-						else if(i==2)
-						{
-							positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_4;
-							if(resolve_instantEval_passedPawn(2,'w',j))
-								positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_4;
-						}
-						else if(i==1)
-						{
-							positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_5;
-						}
+						positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_1;
+						if(resolve_instantEval_passedPawn(5,'w',j))
+							positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_1;
+					}
+					else if(i==4)
+					{
+						positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_2;
+						if(resolve_instantEval_passedPawn(4,'w',j))
+							positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_2;
+					}
+					else if(i==3)
+					{
+						positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_3;
+						if(resolve_instantEval_passedPawn(3,'w',j))
+							positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_3;
+					}
+					else if(i==2)
+					{
+						positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_4;
+						if(resolve_instantEval_passedPawn(2,'w',j))
+							positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_4;
+					}
+					else if(i==1)
+					{
+						positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_5;
 					}
 				}
 			}
-			if(tempWhiteTargeters<=tempBlackTargeters)
+			//pawns
+			if(getPieceColor(&theBoard[i][j])=='b')
 			{
-				//pawns
-				if(getPieceColor(&theBoard[i][j])=='b')
+				if(tempPieceType=='p')
 				{
-					if(tempPieceType=='p')
+					if(i==2)
 					{
-						if(i==2)
-						{
-							positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_1;
-							if(resolve_instantEval_passedPawn(2,'b',j))
-								positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_1;
-						}
-						else if(i==3)
-						{
-							positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_2;
-							if(resolve_instantEval_passedPawn(3,'b',j))
-								positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_2;
-						}
-						else if(i==4)
-						{
-							positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_3;
-							if(resolve_instantEval_passedPawn(4,'b',j))
-								positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_3;
-						}
-						else if(i==5)
-						{
-							positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_4;
-							if(resolve_instantEval_passedPawn(5,'b',j))
-								positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_4;
-						}
-						else if(i==6)
-						{
-							positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_5;
-						}
+						positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_1;
+						if(resolve_instantEval_passedPawn(2,'b',j))
+							positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_1;
+					}
+					else if(i==3)
+					{
+						positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_2;
+						if(resolve_instantEval_passedPawn(3,'b',j))
+							positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_2;
+					}
+					else if(i==4)
+					{
+						positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_3;
+						if(resolve_instantEval_passedPawn(4,'b',j))
+							positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_3;
+					}
+					else if(i==5)
+					{
+						positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_4;
+						if(resolve_instantEval_passedPawn(5,'b',j))
+							positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_4;
+					}
+					else if(i==6)
+					{
+						positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_5;
 					}
 				}
 			}

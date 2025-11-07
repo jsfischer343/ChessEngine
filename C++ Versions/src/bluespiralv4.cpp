@@ -49,7 +49,7 @@ void runInteractiveGame_HumanVsBot(char humanColor)
 {
 	bool validMove;
 	char* buffer = new char[10];
-	Game botGame = Game();
+	Game botGame = Game("r1b1kb1r/pp4pp/2n2p2/8/8/1R2PpB1/n1PK1PPP/5BR1 w - - 0 18");
 	if(humanColor=='w')
 	{
 		while(botGame.getGameState()==0)
@@ -126,25 +126,21 @@ int main()
 	auto startTime = std::chrono::high_resolution_clock::now();
 	//2. Debug
 	//r1bqkb1r/pp3ppp/2B2n2/2pp4/8/2N1P1P1/PPPP3P/1RBQK1NR b Kkq - 0 9
-	Position* debugPosition = new Position("r1bqkb1r/pp3ppp/2B2n2/2pp4/8/2N1P1P1/PPPP3P/1RBQK1NR b Kkq - 0 9");
-	debugPosition->printBoard();
-	debugPosition->printStats();
-	debugPosition->printInstantEvalBreakdown();
  //
-	// move debugMove = move();
-	// debugMove.startRank=3;
-	// debugMove.startFile=5;
-	// debugMove.endRank=2;
-	// debugMove.endFile=4;
-	// debugMove.endPieceType='p';
-	// Position* debugPosition2 = new Position(debugPosition,debugMove);
-	// debugPosition2->printAllMoves();
-	// debugPosition2->printBoard();
- //
+	// Position* debugPosition = new Position("rnbqkb1r/pp2pppp/5n2/1NP5/3p4/8/PPP1PPPP/1RBQKBNR b Kkq - 1 5");
+	// PositionTree* debugPositionTree = new PositionTree(debugPosition,2,true);
+	// debugPositionTree->expandXNextBestBranches(200);
+	// debugPositionTree->printPositionTree(2);
+	// delete debugPositionTree;
 	// delete debugPosition;
-	// delete debugPosition2;
-	//Game testGame = Game("r1bqkb1r/ppp2pp1/2n4p/3p4/4n2P/2N1P3/PPPPQPP1/1RB1KB1R");
-	//testGame.startingPosition->printAllMoves();
+
+	// Position* debugPosition = new Position("rnbqkb1r/pp2pppp/5n2/1NP5/3p4/8/PPP1PPPP/1RBQKBNR b Kkq - 1 5");
+	// debugPosition->printBoard();
+	// debugPosition->printInfo();
+	// debugPosition->printInstantEvalBreakdown();
+	// delete debugPosition;
+
+	runInteractiveGame_HumanVsBot('b');
 
 	//3. Stop Clock
 	auto endTime = std::chrono::high_resolution_clock::now();
