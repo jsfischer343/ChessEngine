@@ -40,7 +40,7 @@ void Game::printBestMove()
 void Game::calculateBestMove()
 {
 	gamePositionTree->expandXNextBestBranches(400);
-	bestMove = gamePositionTree->getBestMove();
+	bestMove = gamePositionTree->getBestRandomMove();
 }
 
 bool Game::makeMove(const move moveMade)

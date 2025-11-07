@@ -127,12 +127,12 @@ int main()
 	//2. Debug
 	//r1bqkb1r/pp3ppp/2B2n2/2pp4/8/2N1P1P1/PPPP3P/1RBQK1NR b Kkq - 0 9
  //
-	Position* debugPosition = new Position("rnbqkb1r/pp2pppp/5n2/1NP5/3p4/8/PPP1PPPP/1RBQKBNR b Kkq - 1 5");
-	PositionTree* debugPositionTree = new PositionTree(debugPosition,2,true);
-	debugPositionTree->expandXNextBestBranches(400);
-	debugPositionTree->printPositionTree(1);
-	delete debugPositionTree;
-	delete debugPosition;
+	// Position* debugPosition = new Position("rnbqkb1r/pp2pppp/5n2/1NP5/3p4/8/PPP1PPPP/1RBQKBNR b Kkq - 1 5");
+	// PositionTree* debugPositionTree = new PositionTree(debugPosition,2,true);
+	// debugPositionTree->expandXNextBestBranches(400);
+	// debugPositionTree->printPositionTree(1);
+	// delete debugPositionTree;
+	// delete debugPosition;
 
 	// Position* debugPosition = new Position("rnbqkb1r/pp2pppp/5n2/1NP5/3p4/8/PPP1PPPP/1RBQKBNR b Kkq - 1 5");
 	// debugPosition->printBoard();
@@ -140,7 +140,7 @@ int main()
 	// debugPosition->printInstantEvalBreakdown();
 	// delete debugPosition;
 
-	//runInteractiveGame_HumanVsBot('b');
+	runInteractiveGame_HumanVsBot('b');
 
 	//3. Stop Clock
 	auto endTime = std::chrono::high_resolution_clock::now();

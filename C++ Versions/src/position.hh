@@ -16,9 +16,9 @@
 //Instant Evaluation Tuning Parameters
 //Symmetric Parameters
 #define PIECE_CONTROL_WEIGHT 0.2	//weight given to controlling a square with a piece on it (in proportion to that piece)
-#define SQUARE_CONTROL_WEIGHT 0.1	//weight given to controlling an empty square
-#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_DEFENSIVE 0.1
-#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_OFFENSIVE 0.1
+#define SQUARE_CONTROL_WEIGHT 0.2	//weight given to controlling an empty square
+#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_DEFENSIVE 0.2
+#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_OFFENSIVE 0.2
 #define PAWN_WEIGHT_1 0.02 //value of pawn that is 1 out 6 squares from promotion
 #define PAWN_WEIGHT_2 0.08 //and so on
 #define PAWN_WEIGHT_3 0.15
@@ -29,7 +29,7 @@
 #define PAWN_WEIGHT_PASSED_4 1.2
 #define PAWN_WEIGHT_PASSED_5 2 //value of pawn that is one square from promotion
 //Asymmetric Parameters
-#define TURN_BASED_CONTROL_BONUS 1.1 //multiplicative factor for controlling a square/piece on your turn
+#define TURN_BASED_CONTROL_BONUS 1 //multiplicative factor for controlling a piece on your turn
 
 //--Move--
 struct move

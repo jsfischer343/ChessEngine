@@ -2,6 +2,7 @@
 #define __UTILITIES_HH__
 #include <cctype>
 #include <cstdint>
+#include <random>
 
 char engineRank_TO_notationRank(int8_t engineRank);
 char engineFile_TO_notationFile(int8_t engineFile);

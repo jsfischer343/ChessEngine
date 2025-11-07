@@ -426,7 +426,28 @@ move PositionTree::getBestRandomMove()
 	{
 		return move();
 	}
-	return this->root->children[0]->moveMade; //The best move is assumed to be the first move since expandNextBestBranch() and generatePositionTreeRecursive_computeEvalsYes() will both sort the tree as it generates it.
+	int i=1;
+	//The best move is assumed to be the first move since expandNextBestBranch() and generatePositionTreeRecursive_computeEvalsYes() will both sort the tree as it generates it.
+	float topMoveBranchBest = this->root->children[0]->branchBest;
+	if(this->root->position->colorToMove=='w')
+	{
+		topMoveBranchBest-=EVALUATION_EQUIVALENCY_THRESHOLD;
+		while(this->root->children[i]->branchBest>=topMoveBranchBest)
+		{
+			i++; //increment while the next move is similar enough in evaluation to the best move
+		}
+	}
+	else
+	{
+		topMoveBranchBest+=EVALUATION_EQUIVALENCY_THRESHOLD;
+		while(this->root->children[i]->branchBest<=topMoveBranchBest)
+		{
+			i++;
+		}
+	}
+	srand(time(0));
+	int randomIndex = rand()%i; //selects a random index from the range given by i
+	return this->root->children[randomIndex]->moveMade;
 }
 int8_t PositionTree::getGameState()
 {
