@@ -1426,250 +1426,33 @@ Position::piece* Position::getKingPtr(char color)
 	}
 	return NULL;
 }
-bool Position::instantEval_passedPawn(int8_t rank, char color, int j)
+double Position::getInstantEval()
 {
-	bool passedPawn;
-	if(color=='w')
-	{
-		passedPawn=true;
-		for(int k=rank-1;k>0;k--)
-		{
-			if(onBoard(k,j-1))
-			{
-				if(getPieceColor(&theBoard[k][j-1])=='b')
-				{
-					if(theBoard[k][j-1].piecePtr->type=='p')
-					{
-						passedPawn = false;
-					}
-				}
-			}
-			if(onBoard(k,j+1))
-			{
-				if(getPieceColor(&theBoard[k][j+1])=='b')
-				{
-					if(theBoard[k][j+1].piecePtr->type=='p')
-					{
-						passedPawn = false;
-					}
-				}
-			}
-			if(getPieceColor(&theBoard[k][j])=='b')
-			{
-				if(theBoard[k][j].piecePtr->type=='p')
-				{
-					passedPawn = false;
-				}
-			}
-		}
-		return passedPawn;
-	}
-	else
-	{
-		passedPawn=true;
-		for(int k=rank+1;k<7;k++)
-		{
-			if(onBoard(k,j-1))
-			{
-				if(getPieceColor(&theBoard[k][j-1])=='w')
-				{
-					if(theBoard[k][j-1].piecePtr->type=='p')
-					{
-						passedPawn = false;
-					}
-				}
-			}
-			if(onBoard(k,j+1))
-			{
-				if(getPieceColor(&theBoard[k][j+1])=='w')
-				{
-					if(theBoard[k][j+1].piecePtr->type=='p')
-					{
-						passedPawn = false;
-					}
-				}
-			}
-			if(getPieceColor(&theBoard[k][j])=='w')
-			{
-				if(theBoard[k][j].piecePtr->type=='p')
-				{
-					passedPawn = false;
-				}
-			}
-		}
-		return passedPawn;
-	}
-}
-double Position::instantEval()
-{
-	double materialEval=0;
-	double positionEval=0;
-
 	if(positionState==positionstate_draw50||positionState==positionstate_drawStalemate||positionState==positionstate_drawInsufficientMaterial)
 		return 0;
 	if(positionState==positionstate_blackWin)
-		return -200;
+		return -1000;
 	if(positionState==positionstate_whiteWin)
-		return 200;
-	//Material
-	piece* currentPiece;
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		currentPiece = &whitePieces[i];
-		if(currentPiece->type=='\0')
-			continue;
-		if(currentPiece->type=='q')
-			materialEval=materialEval+9;
-		if(currentPiece->type=='r')
-			materialEval=materialEval+5;
-		if(currentPiece->type=='b')
-			materialEval=materialEval+3;
-		if(currentPiece->type=='n')
-			materialEval=materialEval+3;
-		if(currentPiece->type=='p')
-			materialEval=materialEval+1;
-	}
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		currentPiece = &blackPieces[i];
-		if(currentPiece->type=='\0')
-			continue;
-		if(currentPiece->type=='q')
-			materialEval=materialEval-9;
-		if(currentPiece->type=='r')
-			materialEval=materialEval-5;
-		if(currentPiece->type=='b')
-			materialEval=materialEval-3;
-		if(currentPiece->type=='n')
-			materialEval=materialEval-3;
-		if(currentPiece->type=='p')
-			materialEval=materialEval-1;
-	}
-	//Positional
-	int tempWhiteTargeters;
-	int tempBlackTargeters;
-	double pieceValue;
-	for(int i=0;i<8;i++)
-	{
-		for(int j=0;j<8;j++)
-		{
-			pieceValue=0;
-			tempWhiteTargeters=getTotalTargeters(&theBoard[i][j],'w');
-			tempBlackTargeters=getTotalTargeters(&theBoard[i][j],'b');
-			//does this square have a piece on it?
-			if(getPieceColor(&theBoard[i][j])!='\0')
-			{
-				if(theBoard[i][j].piecePtr->type=='q')
-					pieceValue=9;
-				else if(theBoard[i][j].piecePtr->type=='r')
-				{
-					pieceValue=5;
-				}
-				else if(theBoard[i][j].piecePtr->type=='b')
-				{
-					pieceValue=3;
-				}
-				else if(theBoard[i][j].piecePtr->type=='n')
-				{
-					pieceValue=3;
-				}
-				else if(theBoard[i][j].piecePtr->type=='p')
-				{
-					pieceValue=1;
-				}
-				else
-				{
-					pieceValue=0;
-				}
-			}
-			if(tempWhiteTargeters>tempBlackTargeters)
-			{
-				positionEval=positionEval+(pieceValue*PIECE_CONTROL_WEIGHT)+SQUARE_CONTROL_WEIGHT;
-			}
-			else if(tempWhiteTargeters<tempBlackTargeters)
-			{
-				positionEval=positionEval-(pieceValue*PIECE_CONTROL_WEIGHT)-SQUARE_CONTROL_WEIGHT;
-			}
-			//additional pawn positional analysis (passed pawns, position towards promotion)
-			if(tempWhiteTargeters>=tempBlackTargeters)
-			{
-				if(getPieceColor(&theBoard[i][j])=='w')
-				{
-					if(theBoard[i][j].piecePtr->type=='p')
-					{
-						if(i==5)
-						{
-							positionEval=positionEval+PAWN_WEIGHT_1;
-							if(instantEval_passedPawn(5,'w',j))
-								positionEval=positionEval+PAWN_WEIGHT_PASSED_1;
-						}
-						else if(i==4)
-						{
-							positionEval=positionEval+PAWN_WEIGHT_2;
-							if(instantEval_passedPawn(4,'w',j))
-								positionEval=positionEval+PAWN_WEIGHT_PASSED_2;
-						}
-						else if(i==3)
-						{
-							positionEval=positionEval+PAWN_WEIGHT_3;
-							if(instantEval_passedPawn(3,'w',j))
-								positionEval=positionEval+PAWN_WEIGHT_PASSED_3;
-						}
-						else if(i==2)
-						{
-							positionEval=positionEval+PAWN_WEIGHT_4;
-							if(instantEval_passedPawn(2,'w',j))
-								positionEval=positionEval+PAWN_WEIGHT_PASSED_4;
-						}
-						else if(i==1)
-						{
-							positionEval=positionEval+PAWN_WEIGHT_PASSED_5;
-						}
-					}
-				}
-			}
-			if(tempWhiteTargeters<=tempBlackTargeters)
-			{
-				if(getPieceColor(&theBoard[i][j])=='b')
-				{
-					if(theBoard[i][j].piecePtr->type=='p')
-					{
-						if(i==2)
-						{
-							positionEval=positionEval-PAWN_WEIGHT_1;
-							if(instantEval_passedPawn(2,'b',j))
-								positionEval=positionEval-PAWN_WEIGHT_PASSED_1;
-						}
-						else if(i==3)
-						{
-							positionEval=positionEval-PAWN_WEIGHT_2;
-							if(instantEval_passedPawn(3,'b',j))
-								positionEval=positionEval-PAWN_WEIGHT_PASSED_2;
-						}
-						else if(i==4)
-						{
-							positionEval=positionEval-PAWN_WEIGHT_3;
-							if(instantEval_passedPawn(4,'b',j))
-								positionEval=positionEval-PAWN_WEIGHT_PASSED_3;
-						}
-						else if(i==5)
-						{
-							positionEval=positionEval-PAWN_WEIGHT_4;
-							if(instantEval_passedPawn(5,'b',j))
-								positionEval=positionEval-PAWN_WEIGHT_PASSED_4;
-						}
-						else if(i==6)
-						{
-							positionEval=positionEval-PAWN_WEIGHT_PASSED_5;
-						}
-					}
-				}
-			}
-		}
-	}
-	return materialEval+positionEval;
-}
+		return 1000;
 
+	double sum = 0;
+	sum+=(double)positionEvaluation.material_pawns;
+	sum+=(double)positionEvaluation.material_knights;
+	sum+=(double)positionEvaluation.material_bishops;
+	sum+=(double)positionEvaluation.material_rooks;
+	sum+=(double)positionEvaluation.material_queens;
+	sum+=(double)positionEvaluation.positional_squarecontrol_base;
+	sum+=(double)positionEvaluation.positional_squarecontrol_king_defensive;
+	sum+=(double)positionEvaluation.positional_squarecontrol_king_offensive;
+	sum+=(double)positionEvaluation.positional_squarecontrol_pawns;
+	sum+=(double)positionEvaluation.positional_squarecontrol_knights;
+	sum+=(double)positionEvaluation.positional_squarecontrol_bishops;
+	sum+=(double)positionEvaluation.positional_squarecontrol_rooks;
+	sum+=(double)positionEvaluation.positional_squarecontrol_queens;
+	sum+=(double)positionEvaluation.positional_pawns_notpassed;
+	sum+=(double)positionEvaluation.positional_pawns_passed;
+	return sum;
+}
 
 //-Debug Information-
 void Position::printBoard()
@@ -1707,6 +1490,42 @@ void Position::printStats()
 	printf("En Passant: (%d,%d)\n",enPassantRank,enPassantFile);
 	printf("Fifty Move Rule Counter: %d\n",fiftyMoveRuleCounter);
 	printf("Move: %d\n",moveCounter);
+}
+void Position::printInstantEvalBreakdown()
+{
+	float materialEval = 0;
+	float positionalEval = 0;
+	materialEval+=positionEvaluation.material_pawns;
+	materialEval+=positionEvaluation.material_knights;
+	materialEval+=positionEvaluation.material_bishops;
+	materialEval+=positionEvaluation.material_rooks;
+	materialEval+=positionEvaluation.material_queens;
+	positionalEval+=positionEvaluation.positional_squarecontrol_base;
+	positionalEval+=positionEvaluation.positional_squarecontrol_king_defensive;
+	positionalEval+=positionEvaluation.positional_squarecontrol_king_offensive;
+	positionalEval+=positionEvaluation.positional_squarecontrol_pawns;
+	positionalEval+=positionEvaluation.positional_squarecontrol_knights;
+	positionalEval+=positionEvaluation.positional_squarecontrol_bishops;
+	positionalEval+=positionEvaluation.positional_squarecontrol_rooks;
+	positionalEval+=positionEvaluation.positional_squarecontrol_queens;
+	positionalEval+=positionEvaluation.positional_pawns_notpassed;
+	positionalEval+=positionEvaluation.positional_pawns_passed;
+
+	printf("---Instant Eval Breakdown---\n");
+	printf("Material Total: %f\n",materialEval);
+	printf("Positional Total: %f\n\n",positionalEval);
+	printf("-Square Control-\n");
+	printf("Base: %f\n",positionEvaluation.positional_squarecontrol_base);
+	printf("Pawns: %f\n",positionEvaluation.positional_squarecontrol_pawns);
+	printf("Knights: %f\n",positionEvaluation.positional_squarecontrol_knights);
+	printf("Bishops: %f\n",positionEvaluation.positional_squarecontrol_bishops);
+	printf("Rooks: %f\n",positionEvaluation.positional_squarecontrol_rooks);
+	printf("Queens: %f\n",positionEvaluation.positional_squarecontrol_queens);
+	printf("King Adjacent Squares (defensive): %f\n",positionEvaluation.positional_squarecontrol_king_defensive);
+	printf("King Adjacent Squares (offensive): %f\n\n",positionEvaluation.positional_squarecontrol_king_offensive);
+	printf("-Pawns (i.g. promotion potential)-\n");
+	printf("Not Passed: %f\n",positionEvaluation.positional_pawns_notpassed);
+	printf("Passed: %f\n",positionEvaluation.positional_pawns_passed);
 }
 void Position::printAllTargets()
 {
@@ -1798,7 +1617,29 @@ bool Position::onBoard(int8_t rank, int8_t file)
 		return true;
 	return false;
 }
-
+bool Position::adjacentToKing(int8_t rank, int8_t file, Position::piece* kingPtr)
+{
+	int8_t kingRank = kingPtr->rank;
+	int8_t kingFile = kingPtr->file;
+	if(rank+1==kingRank && file+1==kingFile)
+		return true;
+	else if(rank-1==kingRank && file==kingFile)
+		return true;
+	else if(rank+1==kingRank && file==kingFile)
+		return true;
+	else if(rank==kingRank && file-1==kingFile)
+		return true;
+	else if(rank==kingRank && file+1==kingFile)
+		return true;
+	else if(rank-1==kingRank && file+1==kingFile)
+		return true;
+	else if(rank-1==kingRank && file-1==kingFile)
+		return true;
+	else if(rank+1==kingRank && file-1==kingFile)
+		return true;
+	else
+		return false;
+}
 
 void Position::setupMemory()
 {
@@ -3233,6 +3074,293 @@ void Position::resolve_positionState()
 		}
 	}
 }
+bool Position::resolve_instantEval_passedPawn(int8_t rank, char color, int j)
+{
+	bool passedPawn;
+	if(color=='w')
+	{
+		passedPawn=true;
+		for(int k=rank-1;k>0;k--)
+		{
+			if(onBoard(k,j-1))
+			{
+				if(getPieceColor(&theBoard[k][j-1])=='b')
+				{
+					if(theBoard[k][j-1].piecePtr->type=='p')
+					{
+						passedPawn = false;
+					}
+				}
+			}
+			if(onBoard(k,j+1))
+			{
+				if(getPieceColor(&theBoard[k][j+1])=='b')
+				{
+					if(theBoard[k][j+1].piecePtr->type=='p')
+					{
+						passedPawn = false;
+					}
+				}
+			}
+			if(getPieceColor(&theBoard[k][j])=='b')
+			{
+				if(theBoard[k][j].piecePtr->type=='p')
+				{
+					passedPawn = false;
+				}
+			}
+		}
+		return passedPawn;
+	}
+	else
+	{
+		passedPawn=true;
+		for(int k=rank+1;k<7;k++)
+		{
+			if(onBoard(k,j-1))
+			{
+				if(getPieceColor(&theBoard[k][j-1])=='w')
+				{
+					if(theBoard[k][j-1].piecePtr->type=='p')
+					{
+						passedPawn = false;
+					}
+				}
+			}
+			if(onBoard(k,j+1))
+			{
+				if(getPieceColor(&theBoard[k][j+1])=='w')
+				{
+					if(theBoard[k][j+1].piecePtr->type=='p')
+					{
+						passedPawn = false;
+					}
+				}
+			}
+			if(getPieceColor(&theBoard[k][j])=='w')
+			{
+				if(theBoard[k][j].piecePtr->type=='p')
+				{
+					passedPawn = false;
+				}
+			}
+		}
+		return passedPawn;
+	}
+}
+void Position::resolve_instantEval()
+{
+	//if the gamestate in not in-play there is no need to do a positional eval
+	if(positionState==positionstate_draw50||positionState==positionstate_drawStalemate||positionState==positionstate_drawInsufficientMaterial)
+		return;
+	if(positionState==positionstate_blackWin)
+		return;
+	if(positionState==positionstate_whiteWin)
+		return;
+
+
+	//Material
+	piece* currentPiece;
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		currentPiece = &whitePieces[i];
+		if(currentPiece->type=='\0')
+			continue;
+		if(currentPiece->type=='q')
+			positionEvaluation.material_queens+=9;
+		if(currentPiece->type=='r')
+			positionEvaluation.material_rooks+=5;
+		if(currentPiece->type=='b')
+			positionEvaluation.material_bishops+=3;
+		if(currentPiece->type=='n')
+			positionEvaluation.material_knights+=3;
+		if(currentPiece->type=='p')
+			positionEvaluation.material_pawns+=1;
+	}
+	for(int i=0;i<MAX_PIECES;i++)
+	{
+		currentPiece = &blackPieces[i];
+		if(currentPiece->type=='\0')
+			continue;
+		if(currentPiece->type=='q')
+			positionEvaluation.material_queens-=9;
+		if(currentPiece->type=='r')
+			positionEvaluation.material_rooks-=5;
+		if(currentPiece->type=='b')
+			positionEvaluation.material_bishops-=3;
+		if(currentPiece->type=='n')
+			positionEvaluation.material_knights-=3;
+		if(currentPiece->type=='p')
+			positionEvaluation.material_pawns-=1;
+	}
+	//Positional
+	int tempWhiteTargeters;
+	int tempBlackTargeters;
+	double tempPieceValue;
+	char tempPieceType;
+	piece* kingPtrWhite = getKingPtr('w');
+	piece* kingPtrBlack = getKingPtr('b');
+	for(int i=0;i<8;i++)
+	{
+		for(int j=0;j<8;j++)
+		{
+			tempPieceValue=0;
+			if(getPieceColor(&theBoard[i][j])!='\0') //protection against null pointer dereference error
+			{
+				tempPieceType=theBoard[i][j].piecePtr->type;
+			}
+			else
+			{
+				tempPieceType='\0';
+			}
+			tempWhiteTargeters=getTotalTargeters(&theBoard[i][j],'w');
+			tempBlackTargeters=getTotalTargeters(&theBoard[i][j],'b');
+			if(tempWhiteTargeters>tempBlackTargeters)
+			{
+				//-general-
+				if(tempPieceType=='q')
+					positionEvaluation.positional_squarecontrol_queens+=(9*PIECE_CONTROL_WEIGHT);
+				else if(tempPieceType=='r')
+				{
+					positionEvaluation.positional_squarecontrol_rooks+=(5*PIECE_CONTROL_WEIGHT);
+				}
+				else if(tempPieceType=='b')
+				{
+					positionEvaluation.positional_squarecontrol_bishops+=(3*PIECE_CONTROL_WEIGHT);
+				}
+				else if(tempPieceType=='n')
+				{
+					positionEvaluation.positional_squarecontrol_knights+=(3*PIECE_CONTROL_WEIGHT);
+				}
+				else if(tempPieceType=='p')
+				{
+					positionEvaluation.positional_squarecontrol_pawns+=(1*PIECE_CONTROL_WEIGHT);
+				}
+				positionEvaluation.positional_squarecontrol_base+=SQUARE_CONTROL_WEIGHT;
+
+				//-king-
+				if(adjacentToKing((int8_t)i,(int8_t)j,kingPtrWhite))
+				{
+					positionEvaluation.positional_squarecontrol_king_defensive+=KING_ADJACENT_SQUARE_CONTROL_WEIGHT; //bonus for defending squares around white king
+				}
+				if(adjacentToKing((int8_t)i,(int8_t)j,kingPtrBlack))
+				{
+					positionEvaluation.positional_squarecontrol_king_offensive+=KING_ADJACENT_SQUARE_CONTROL_WEIGHT; //bonus for controlling squares around enemy king
+				}
+			}
+			else if(tempWhiteTargeters<tempBlackTargeters)
+			{
+				//-general-
+				if(tempPieceType=='q')
+					positionEvaluation.positional_squarecontrol_queens-=(9*PIECE_CONTROL_WEIGHT);
+				else if(tempPieceType=='r')
+				{
+					positionEvaluation.positional_squarecontrol_rooks-=(5*PIECE_CONTROL_WEIGHT);
+				}
+				else if(tempPieceType=='b')
+				{
+					positionEvaluation.positional_squarecontrol_bishops-=(3*PIECE_CONTROL_WEIGHT);
+				}
+				else if(tempPieceType=='n')
+				{
+					positionEvaluation.positional_squarecontrol_knights-=(3*PIECE_CONTROL_WEIGHT);
+				}
+				else if(tempPieceType=='p')
+				{
+					positionEvaluation.positional_squarecontrol_pawns-=(1*PIECE_CONTROL_WEIGHT);
+				}
+				positionEvaluation.positional_squarecontrol_base+=SQUARE_CONTROL_WEIGHT;
+
+				//-king-
+				if(adjacentToKing((int8_t)i,(int8_t)j,kingPtrWhite))
+				{
+					positionEvaluation.positional_squarecontrol_king_offensive-=KING_ADJACENT_SQUARE_CONTROL_WEIGHT; //bonus for controlling squares around enemy king
+				}
+				if(adjacentToKing((int8_t)i,(int8_t)j,kingPtrBlack))
+				{
+					positionEvaluation.positional_squarecontrol_king_defensive-=KING_ADJACENT_SQUARE_CONTROL_WEIGHT; //bonus for defending squares around black king
+				}
+			}
+			//additional positional analysis
+			if(tempWhiteTargeters>=tempBlackTargeters)
+			{
+				//pawns
+				if(getPieceColor(&theBoard[i][j])=='w')
+				{
+					if(tempPieceType=='p')
+					{
+						if(i==5)
+						{
+							positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_1;
+							if(resolve_instantEval_passedPawn(5,'w',j))
+								positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_1;
+						}
+						else if(i==4)
+						{
+							positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_2;
+							if(resolve_instantEval_passedPawn(4,'w',j))
+								positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_2;
+						}
+						else if(i==3)
+						{
+							positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_3;
+							if(resolve_instantEval_passedPawn(3,'w',j))
+								positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_3;
+						}
+						else if(i==2)
+						{
+							positionEvaluation.positional_pawns_notpassed+=PAWN_WEIGHT_4;
+							if(resolve_instantEval_passedPawn(2,'w',j))
+								positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_4;
+						}
+						else if(i==1)
+						{
+							positionEvaluation.positional_pawns_passed+=PAWN_WEIGHT_PASSED_5;
+						}
+					}
+				}
+			}
+			if(tempWhiteTargeters<=tempBlackTargeters)
+			{
+				//pawns
+				if(getPieceColor(&theBoard[i][j])=='b')
+				{
+					if(tempPieceType=='p')
+					{
+						if(i==2)
+						{
+							positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_1;
+							if(resolve_instantEval_passedPawn(2,'b',j))
+								positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_1;
+						}
+						else if(i==3)
+						{
+							positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_2;
+							if(resolve_instantEval_passedPawn(3,'b',j))
+								positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_2;
+						}
+						else if(i==4)
+						{
+							positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_3;
+							if(resolve_instantEval_passedPawn(4,'b',j))
+								positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_3;
+						}
+						else if(i==5)
+						{
+							positionEvaluation.positional_pawns_notpassed-=PAWN_WEIGHT_4;
+							if(resolve_instantEval_passedPawn(5,'b',j))
+								positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_4;
+						}
+						else if(i==6)
+						{
+							positionEvaluation.positional_pawns_passed-=PAWN_WEIGHT_PASSED_5;
+						}
+					}
+				}
+			}
+		}
+	}
+}
 void Position::resolve()
 {
 	//Targets
@@ -3260,6 +3388,7 @@ void Position::resolve()
 		resolve_moves('b');
 	}
 	resolve_positionState();
+	resolve_instantEval();
 }
 void Position::clean()
 {

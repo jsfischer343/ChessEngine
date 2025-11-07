@@ -126,9 +126,10 @@ int main()
 	auto startTime = std::chrono::high_resolution_clock::now();
 	//2. Debug
 	//r1bqkb1r/pp3ppp/2B2n2/2pp4/8/2N1P1P1/PPPP3P/1RBQK1NR b Kkq - 0 9
-	// Position* debugPosition = new Position("3k4/8/8/4pP2/3K4/8/8/8 w - e6 0 2");
-	// debugPosition->printAllMoves();
-	// debugPosition->printBoard();
+	Position* debugPosition = new Position("r1bqkb1r/pp3ppp/2B2n2/2pp4/8/2N1P1P1/PPPP3P/1RBQK1NR b Kkq - 0 9");
+	debugPosition->printBoard();
+	debugPosition->printStats();
+	debugPosition->printInstantEvalBreakdown();
  //
 	// move debugMove = move();
 	// debugMove.startRank=3;
@@ -142,7 +143,6 @@ int main()
  //
 	// delete debugPosition;
 	// delete debugPosition2;
-	runInteractiveGame_HumanVsBot('b');
 	//Game testGame = Game("r1bqkb1r/ppp2pp1/2n4p/3p4/4n2P/2N1P3/PPPPQPP1/1RB1KB1R");
 	//testGame.startingPosition->printAllMoves();
 

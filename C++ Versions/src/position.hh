@@ -13,8 +13,10 @@
 #define MAX_SQUARE_TARGETS 22	//Max number of pieces that can target any 1 square
 #define MAX_SQUARE_MOVES 22
 
-#define PIECE_CONTROL_WEIGHT 0.2	//During instant eval the weight given to controlling a square with a piece on it (in proportion to that piece)
-#define SQUARE_CONTROL_WEIGHT 0.1	//During instant eval the weight given to controlling an empty square
+//Instant Evaluation Tuning Parameters
+#define PIECE_CONTROL_WEIGHT 0.1	//weight given to controlling a square with a piece on it (in proportion to that piece)
+#define SQUARE_CONTROL_WEIGHT 0.1	//weight given to controlling an empty square
+#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT 0.1
 #define PAWN_WEIGHT_1 0.02 //value of pawn that is 1 out 6 squares from promotion
 #define PAWN_WEIGHT_2 0.08 //and so on
 #define PAWN_WEIGHT_3 0.15
@@ -54,13 +56,6 @@ class Position
 			struct square* moves[MAX_PIECE_MOVES];				//squares this piece can move to next move
 			bool pinned[4] = {false,false,false,false};
 		};
-		enum PinnedEnum
-		{
-			pin_negativeDiag,
-			pin_positiveDiag,
-			pin_rank,
-			pin_file
-		};
 		struct square
 		{
 			//0,0 is the top left corner 7,7 is the bottom right corner (from white's perspective always)
@@ -72,8 +67,53 @@ class Position
 			struct piece* targeters[MAX_SQUARE_TARGETS]; 		//pieces that are 'attacking' this square (including pinned pieces)
 			struct piece* moves[MAX_SQUARE_MOVES]; 				//pieces that can move to this square next turn
 		};
+		struct instantEval
+		{
+			//Material
+			float material_pawns = 0;
+			float material_knights = 0;
+			float material_bishops = 0;
+			float material_rooks = 0;
+			float material_queens = 0;
+			//Positional
+			float positional_squarecontrol_base = 0;
+			float positional_squarecontrol_king_defensive = 0;
+			float positional_squarecontrol_king_offensive = 0;
+			float positional_squarecontrol_pawns = 0;
+			float positional_squarecontrol_knights = 0;
+			float positional_squarecontrol_bishops = 0;
+			float positional_squarecontrol_rooks = 0;
+			float positional_squarecontrol_queens = 0;
+			float positional_pawns_notpassed = 0;
+			float positional_pawns_passed = 0;
+		};
 		typedef struct square square;
 		typedef struct piece piece;
+		typedef struct instantEval instantEval;
+
+		enum PinnedEnum
+		{
+			pin_negativeDiag,
+			pin_positiveDiag,
+			pin_rank,
+			pin_file
+		};
+		enum CastlingEnum
+		{
+			kingside_white,
+			queenside_white,
+			kingside_black,
+			queenside_black
+		};
+		enum PositionState
+		{
+			positionstate_inplay,
+			positionstate_draw50,
+			positionstate_drawStalemate,
+			positionstate_drawInsufficientMaterial,
+			positionstate_whiteWin,
+			positionstate_blackWin
+		};
 		
 		//DATA
 		square** theBoard;	//8x8
@@ -86,36 +126,19 @@ class Position
 		int8_t enPassantFile = -1;
 		bool castlingFlags[4] = {false,false,false,false};
 		bool canCastle[4] = {false,false,false,false};
-		enum CastlingEnum
-		{
-			kingside_white,
-			queenside_white,
-			kingside_black,
-			queenside_black
-		};
 		short fiftyMoveRuleCounter = -1;
 		short moveCounter = -1;
 		int8_t positionState = 0;
-		enum PositionState
-		{
-			positionstate_inplay,
-			positionstate_draw50,
-			positionstate_drawStalemate,
-			positionstate_drawInsufficientMaterial,
-			positionstate_whiteWin,
-			positionstate_blackWin
-		};
+		instantEval positionEvaluation;
 		
 		//FUNCTIONS
 		//-Constructors-
 		Position();
 		Position(const char* FENString);
 		Position(const Position& lastPosition, const move moveMade);
-	private:
-		void castlingConstructor(const Position& lastPosition, const int8_t castlingCode);
-	public:
 		Position(const Position* lastPosition, const move moveMade);
 	private:
+		void castlingConstructor(const Position& lastPosition, const int8_t castlingCode);
 		void castlingConstructor(const Position* lastPosition, const int8_t castlingCode);
 	public:
 		~Position();
@@ -129,7 +152,7 @@ class Position
 		int getTotalMovers(square* squarePtr, char color);
 		char getPieceColor(square* squarePtr);
 		piece* getKingPtr(char color);
-		double instantEval();
+		double getInstantEval();
 	private:
 			bool instantEval_passedPawn(int8_t rank, char color, int j);
 
@@ -137,11 +160,13 @@ class Position
 		//-Debug Information-
 		void printBoard();
 		void printStats();
+		void printInstantEvalBreakdown();
 		void printAllTargets();
 		void printAllMoves();
 
 		//-Utility-
 		bool onBoard(int8_t rank, int8_t file);
+		bool adjacentToKing(int8_t rank, int8_t file, piece* kingPtr);
 		
 	private:
 		void setupMemory();
@@ -149,7 +174,7 @@ class Position
 		void sanityCheck();		//check that the position is legal
 		
 		//-Position Calculation-
-		void resolve();			//resolve all targets and moves
+		void resolve();			//resolve all targets, moves, and compute instant evaluation
 			void resolve_targets(char color);
 				void resolve_targets_scan(piece* currentPiecePtr, int8_t startingRank, int8_t startingFile, int rankDirection, int fileDirection); // rank/fileDirection = -1, 0, or 1
 				void resolve_targets_king(piece* kingPtr, int8_t rank, int8_t file);
@@ -168,10 +193,12 @@ class Position
 				void resolve_movesInCheck_scan_capturesOnly(piece* currentPiecePtr, piece* checkingPiece, int rankDirection, int fileDirection);
 			void resolve_positionState();
 				bool resolve_positionState_insufficientMaterial();
+			void resolve_instantEval();
+				bool resolve_instantEval_passedPawn(int8_t rank, char color, int j);
 		void clean();			//remove all targets and moves
 		
 		//-Piece Setup-
-		void initPiece(int8_t rank, int8_t file, char type, char color);
+		void initPiece(int8_t rank, int8_t file, char type, char color); //adds a piece but doesn't resolve targets, moves, or validity of piece
 		void removePiece(piece* piecePtr);
 		
 		//-Updating Targets & Moves-

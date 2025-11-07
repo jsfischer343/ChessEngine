@@ -126,7 +126,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive_computeEvals
 			node->children[i]->parent = node;
 			node->children[i]->position = resultingPosition;
 			node->children[i]->moveMade = currentMoveArr[i];
-			node->children[i]->instantEval = resultingPosition->instantEval();
+			node->children[i]->instantEval = resultingPosition->getInstantEval();
 			if(checkForRepetition(node->children[i]))
 			{
 				node->children[i]->drawByRepetition = true;
