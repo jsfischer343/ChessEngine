@@ -45,6 +45,18 @@ void printGameResult(int8_t gameState)
 	}
 }
 
+void BotVsBot()
+{
+	Game botVsBotGame = Game();
+	while(botVsBotGame.getGameState()==0)
+	{
+		botVsBotGame.calculateBestMove();
+		botVsBotGame.printBestMove();
+		botVsBotGame.makeMove(botVsBotGame.bestMove);
+	}
+	printGameResult(botVsBotGame.getGameState());
+}
+
 void runInteractiveGame_HumanVsBot(char humanColor)
 {
 	bool validMove;
@@ -140,7 +152,7 @@ int main()
 	// debugPosition->printInstantEvalBreakdown();
 	// delete debugPosition;
 
-	runInteractiveGame_HumanVsBot('b');
+	BotVsBot();
 
 	//3. Stop Clock
 	auto endTime = std::chrono::high_resolution_clock::now();
