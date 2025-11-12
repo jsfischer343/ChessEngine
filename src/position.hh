@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cctype>
 #include <cmath>
+#include "global.hh"
 
 #define MAX_PIECES 16
 #define MAX_PIECE_TARGETS 27	//Max number of targets a piece can have (this will never be greater than 27 in a normal chess game)
@@ -15,10 +16,10 @@
 
 //Instant Evaluation Tuning Parameters
 //Symmetric Parameters
-#define PIECE_CONTROL_WEIGHT 0.2	//weight given to controlling a square with a piece on it (in proportion to that piece)
-#define SQUARE_CONTROL_WEIGHT 0.2	//weight given to controlling an empty square
-#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_DEFENSIVE 0.2
-#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_OFFENSIVE 0.2
+#define PIECE_CONTROL_WEIGHT 0.1	//weight given to controlling a square with a piece on it (in proportion to that piece)
+#define SQUARE_CONTROL_WEIGHT 0.1	//weight given to controlling an empty square
+#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_DEFENSIVE 0.15
+#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_OFFENSIVE 0.15
 #define PAWN_WEIGHT_1 0.02 //value of pawn that is 1 out 6 squares from promotion
 #define PAWN_WEIGHT_2 0.08 //and so on
 #define PAWN_WEIGHT_3 0.15
@@ -159,7 +160,6 @@ class Position
 		piece* getKingPtr(char color);
 		float getInstantEval();
 
-	public:
 		//-Debug Information-
 		void printBoard();
 		void printInfo();
@@ -170,6 +170,14 @@ class Position
 		//-Utility-
 		bool onBoard(int8_t rank, int8_t file);
 		bool adjacentToKing(int8_t rank, int8_t file, piece* kingPtr);
+		char engineRank_TO_notationRank(int8_t engineRank);
+		char engineFile_TO_notationFile(int8_t engineFile);
+		int8_t notationRank_TO_engineRank(char notationRank);
+		int8_t notationFile_TO_engineFile(char notationFile);
+		char enginePieceType_TO_notationPieceType(char enginePieceType, char enginePieceColor);
+		bool isFileOrRank(char charInQuestion);
+		bool isRank(char charInQuestion);
+		bool isFile(char charInQuestion);
 		
 	private:
 		//-Memory-

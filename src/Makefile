@@ -1,10 +1,10 @@
 all:
-	g++ game.cc positiontree.cc position.cc utilities.cc bluespiralv4.cpp -o bluespiralv4
-	chmod +x bluespiralv4
+	g++ uci.cc cli.cc game.cc positiontree.cc position.cc bluespiral.cpp -o bluespiral
+	chmod +x bluespiral
 debug:
-	g++ -g game.cc positiontree.cc position.cc utilities.cc bluespiralv4.cpp -o bluespiralv4
-	chmod +x bluespiralv4
-	gdb -q ./bluespiralv4
+	g++ -g uci.cc cli.cc game.cc positiontree.cc position.cc bluespiral.cpp -o bluespiral
+	chmod +x bluespiral
+	gdb -q ./bluespiral
 clean:
-	rm bluespiralv4 -f
+	rm bluespiral -f
 	rm massif* -f

@@ -7,11 +7,13 @@
 #include <cstddef>
 #include <cctype>
 #include <ctime>
+#include "global.hh"
 #include "position.hh"
 
-#define PROGRAM_MEMORY_LIMIT 820*1024 //820MiB
+#define POSITIONTREE_MEMORY_LIMIT 820*1024 //820MiB
+#define POSITION_OBJ_EPHEMERAL_DEPTH 3 //nodes at this depth will no longer save their position obj and will instead only instantiate it when needed (purpose being to save memory as position objects take up excessive memory)
 #define MAX_DEPTH 5 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
-#define EVALUATION_EQUIVALENCY_THRESHOLD 0.3 //The differential threshold that is used to determine if two moves have 'essentially' equal evaluation
+#define EVALUATION_EQUIVALENCY_THRESHOLD 0.02 //The differential threshold that is used to determine if two moves have 'essentially' equal evaluation
 
 
 class PositionTree
@@ -25,6 +27,7 @@ class PositionTree
 			//-Data-
 			Position* position;
 			move moveMade;
+			char colorToMove;
             int depth;
 			float instantEval = 0; //A biased evaluation that only takes the current position into account
 			float branchRecursiveAvg = 0; //The average of all this node's childrens' branchRecursiveAverages (recursive metric)
@@ -45,18 +48,19 @@ class PositionTree
 
     public:
 		//FUNCTIONS
-		PositionTree(Position* startingPosition, int depth, bool computeEvals);
+		PositionTree(Position* startingPosition, int depth);
 		~PositionTree();
 
     //--Tree Managment--
     private:
         //Create
-        treenode* generatePositionTreeRecursive_computeEvalsNo(treenode* node, int depth);
-        treenode* generatePositionTreeRecursive_computeEvalsYes(treenode* node, int depth);
+        treenode* generatePositionTreeRecursive(treenode* node, int depth);
+			void generatePositionTreeRecursive_reinstantiatePositionObjsRecursiveUpwards(treenode* node);
+			void generatePositionTreeRecursive_destroyPositionObjsRecursiveUpwards(treenode* node);
         //Expand
-        void expandTree(treenode* startingNode, int depth, bool computeEvals);
+        void expandTree(treenode* startingNode, int depth);
 	public:
-		void expandFromRoot(int depth, bool computeEvals);
+		void expandFromRoot(int depth);
 		bool expandNextBestBranch();
 		bool expandXNextBestBranches(int numberOfBranches); //run expandNextBestBranch X number of times
 	private:

@@ -6,6 +6,7 @@
 #include <cstring>
 #include <cstddef>
 #include <cctype>
+#include "global.hh"
 #include "position.hh"
 #include "positiontree.hh"
 
@@ -26,7 +27,8 @@ class Game
 		int8_t getGameState();
 		Position* getCurrentPosition();
 		void printBestMove();
-		void calculateBestMove();
+		void updateBestMove();
+		void updateBestMoveRandom();
 		bool makeMove(const move moveMade);
 		void printBoard();
 };

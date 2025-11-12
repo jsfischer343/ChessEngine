@@ -1,22 +1,14 @@
 #include "positiontree.hh"
-#include "utilities.hh"
 
-PositionTree::PositionTree(Position* startingPosition, int depth, bool computeEvals)
+PositionTree::PositionTree(Position* startingPosition, int depth)
 {
-    this->root = new treenode();
-	this->initNode = this->root;
-    this->root->parent = NULL;
-    this->root->position = startingPosition;
-    this->root->moveMade = move();
-    this->root->depth = 0;
-    if(computeEvals)
-    {
-        this->root = generatePositionTreeRecursive_computeEvalsYes(this->root, depth);
-    }
-    else
-    {
-        this->root = generatePositionTreeRecursive_computeEvalsNo(this->root, depth);
-    }
+    root = new treenode();
+	this->initNode = root;
+    root->parent = NULL;
+    root->position = startingPosition;
+    root->moveMade = move();
+    root->depth = 0;
+	root = generatePositionTreeRecursive(root, depth);
 }
 PositionTree::~PositionTree()
 {
@@ -25,83 +17,70 @@ PositionTree::~PositionTree()
 
 //--Tree Managment--
 //Create
-PositionTree::treenode* PositionTree::generatePositionTreeRecursive_computeEvalsNo(treenode* node, int depth)
+void PositionTree::generatePositionTreeRecursive_reinstantiatePositionObjsRecursiveUpwards(treenode* node)
 {
-	move* currentMoveArr;
-    if(exceededMemoryLimit)
-    {
-        return node;
-    }
-	else if(getMemoryUsage()>PROGRAM_MEMORY_LIMIT)
+	if(node->position!=NULL)
 	{
-        exceededMemoryLimit = true;
-		treeMemoryOverflow();
-		return node;
-	}
-	else if(depth==0)
-	{
-		return node;
-	}
-	else if(node->children_L!=0) //node already has children but specified recursive depth has not been reached yet
-	{
-		for(int i=0;i<node->children_L;i++)
-		{
-			generatePositionTreeRecursive_computeEvalsNo(node->children[i], depth-1);
-		}
+		return;
 	}
 	else
 	{
-		node->children_L = node->position->getTotalMoves();
+		generatePositionTreeRecursive_reinstantiatePositionObjsRecursiveUpwards(node->parent);
+		node->position = new Position(node->parent->position,node->moveMade);
 	}
-	if(node->children_L==0)
-	{
-		return node;
-	}
-	else
-	{
-		node->children = new treenode*[node->children_L];
-		currentMoveArr = node->position->getAllMoves();
-		for(int i=0;i<node->children_L;i++)
-		{
-			node->children[i] = new treenode();
-			Position* resultingPosition = new Position(node->position, currentMoveArr[i]);
-			node->children[i]->parent = node;
-			node->children[i]->position = resultingPosition;
-			node->children[i]->moveMade = currentMoveArr[i];
-			//node->children[i]->instantEval = resultingPosition->getInstantEval();
-			node->children[i]->depth = node->children[i]->parent->depth+1;
-			node->children[i] = generatePositionTreeRecursive_computeEvalsNo(node->children[i], depth-1);
-		}
-		delete[] currentMoveArr;
-		return node;
-	}
-	return node;
 }
-PositionTree::treenode* PositionTree::generatePositionTreeRecursive_computeEvalsYes(treenode* node, int depth)
+void PositionTree::generatePositionTreeRecursive_destroyPositionObjsRecursiveUpwards(treenode* node)
+{
+	if(node->depth<(POSITION_OBJ_EPHEMERAL_DEPTH+root->depth))
+	{
+		return;
+	}
+	else
+	{
+		delete node->position;
+		node->position = NULL;
+		generatePositionTreeRecursive_destroyPositionObjsRecursiveUpwards(node->parent);
+	}
+}
+PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* node, int depth)
 {
 	move* currentMoveArr;
+	bool currentNodePositionObjIsEphemeral = false;
+
+	if(node->position==NULL && !exceededMemoryLimit)
+	{
+		currentNodePositionObjIsEphemeral = true;
+		generatePositionTreeRecursive_reinstantiatePositionObjsRecursiveUpwards(node);
+	}
+
     if(exceededMemoryLimit)
     {
+		node->branchRecursiveAvg = node->instantEval; //if this is a leaf node then it is assumed that the branchAverage is the instant eval
+		node->branchBest = node->instantEval; //if this is a leaf node then it is assumed that the branchBest is the instant eval
         return node;
     }
-	else if(getMemoryUsage()>PROGRAM_MEMORY_LIMIT)
+	else if(getMemoryUsage()>POSITIONTREE_MEMORY_LIMIT)
 	{
         exceededMemoryLimit = true;
 		treeMemoryOverflow();
+		node->branchRecursiveAvg = node->instantEval;
+		node->branchBest = node->instantEval;
 		return node;
 	}
 	else if(depth==0 || !(node->position->positionState==0 && node->drawByRepetition==false))
 	{
-		node->branchRecursiveAvg = node->instantEval; //if this is a leaf node then it is assumed that the branchAverage is the instant eval
-		node->branchBest = node->instantEval; //if this is a leaf node then it is assumed that the branchBest is the instant eval
+		node->branchRecursiveAvg = node->instantEval;
+		node->branchBest = node->instantEval;
 		return node;
 	}
 	else if(node->children_L!=0) //node already has children but specified recursive depth has not been reached yet
 	{
 		for(int i=0;i<node->children_L;i++)
 		{
-			generatePositionTreeRecursive_computeEvalsYes(node->children[i], depth-1);
+			generatePositionTreeRecursive(node->children[i], depth-1);
 		}
+		node->branchRecursiveAvg = node->instantEval;
+		node->branchBest = node->instantEval;
 		refreshTreeCalculationsRecursiveUpwards(node);
 		return node;
 	}
@@ -111,8 +90,8 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive_computeEvals
 	}
 	if(node->children_L==0) //if this is true than there are no more legal moves or the game has come to a draw for this node.
 	{
-		node->branchRecursiveAvg = node->instantEval; //if this is a leaf node then it is assumed that the branchAverage is the instant eval
-		node->branchBest = node->instantEval; //if this is a leaf node then it is assumed that the branchBest is the instant eval
+		node->branchRecursiveAvg = node->instantEval;
+		node->branchBest = node->instantEval;
 		return node;
 	}
 	else
@@ -125,15 +104,24 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive_computeEvals
 			Position* resultingPosition = new Position(node->position, currentMoveArr[i]);
 			node->children[i]->parent = node;
 			node->children[i]->position = resultingPosition;
+			node->children[i]->colorToMove = resultingPosition->colorToMove;
 			node->children[i]->moveMade = currentMoveArr[i];
-			node->children[i]->instantEval = resultingPosition->getInstantEval();
 			if(checkForRepetition(node->children[i]))
 			{
 				node->children[i]->drawByRepetition = true;
 				node->children[i]->instantEval = 0;
 			}
+			else
+			{
+				node->children[i]->instantEval = resultingPosition->getInstantEval();
+			}
 			node->children[i]->depth = node->children[i]->parent->depth+1;
-			node->children[i] = generatePositionTreeRecursive_computeEvalsYes(node->children[i], depth-1);
+			node->children[i] = generatePositionTreeRecursive(node->children[i], depth-1);
+			if(node->children[i]->depth>=(POSITION_OBJ_EPHEMERAL_DEPTH+root->depth))
+			{
+				delete node->children[i]->position;
+				node->children[i]->position = NULL;
+			}
 			node->branchRecursiveAvg += node->children[i]->branchRecursiveAvg;
 		}
 		node->branchRecursiveAvg = node->branchRecursiveAvg/node->children_L;
@@ -141,33 +129,30 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive_computeEvals
 		node->branchBest = node->children[0]->branchBest;
 		delete[] currentMoveArr;
 	}
+
+	if(currentNodePositionObjIsEphemeral)
+	{
+		generatePositionTreeRecursive_destroyPositionObjsRecursiveUpwards(node);
+	}
 	return node;
 }
 //Expand
-void PositionTree::expandTree(treenode* startingNode, int depth, bool computeEvals)
+void PositionTree::expandTree(treenode* startingNode, int depth)
 {
-	if(computeEvals)
-	{
-		startingNode = generatePositionTreeRecursive_computeEvalsYes(startingNode, depth);
-	}
-	else
-	{
-		startingNode = generatePositionTreeRecursive_computeEvalsNo(startingNode, depth);
-	}
-
+	generatePositionTreeRecursive(startingNode, depth);
 }
-void PositionTree::expandFromRoot(int depth, bool computeEvals)
+void PositionTree::expandFromRoot(int depth)
 {
-	expandTree(this->root,depth,computeEvals);
+	expandTree(root,depth);
 }
 bool PositionTree::expandNextBestBranch()
 {
-	treenode* nextNodeToExpand = expandNextBestBranch_findExpansionBranchRecursive(this->root);
+	treenode* nextNodeToExpand = expandNextBestBranch_findExpansionBranchRecursive(root);
 	if(nextNodeToExpand==NULL)
 	{
 		return false;
 	}
-	expandTree(nextNodeToExpand,1,true);
+	expandTree(nextNodeToExpand,1);
 	refreshTreeCalculationsRecursiveUpwards(nextNodeToExpand->parent);
 	return true;
 }
@@ -310,7 +295,7 @@ void PositionTree::destroySubTree(treenode* node)
 void PositionTree::sortChildrenByBranchBest(treenode* node)
 {
 	treenode* temp;
-	if(node->position->colorToMove=='w')
+	if(node->colorToMove=='w')
 	{
 		for(int i=0;i<node->children_L;i++)
 		{
@@ -371,19 +356,15 @@ bool PositionTree::positionsIdentical(treenode* node1, treenode* node2) //Compar
 }
 bool PositionTree::checkForRepetition(treenode* node)
 {
-	treenode* currentNode = node;
+	treenode* currentNode = node->parent;
 	int repetitionCount = 0;
 	while(true)
 	{
-		if(node->parent==NULL)
+		if(currentNode==NULL)
 		{
 			break;
 		}
-		if(node->parent->parent==NULL)
-		{
-			break;
-		}
-		if(positionsIdentical(node,node->parent->parent))
+		if(positionsIdentical(node,currentNode))
 		{
 			repetitionCount++;
 			if(repetitionCount>=2)
@@ -391,7 +372,7 @@ bool PositionTree::checkForRepetition(treenode* node)
 				return true;
 			}
 		}
-		node = node->parent->parent;
+		currentNode = currentNode->parent;
 	}
 	return false;
 }
@@ -414,28 +395,28 @@ void PositionTree::treeMemoryOverflow()
 //--Get--
 move PositionTree::getBestMove()
 {
-	if(this->root->children_L==0)
+	if(root->children_L==0)
 	{
 		return move();
 	}
-	return this->root->children[0]->moveMade; //The best move is assumed to be the first move since expandNextBestBranch() and generatePositionTreeRecursive_computeEvalsYes() will both sort the tree as it generates it.
+	return root->children[0]->moveMade; //The best move is assumed to be the first move since expandNextBestBranch() and generatePositionTreeRecursive_computeEvalsYes() will both sort the tree as it generates it.
 }
 move PositionTree::getBestRandomMove()
 {
-	if(this->root->children_L==0)
+	if(root->children_L==0)
 	{
 		return move();
 	}
 	int i=1;
 	//The best move is assumed to be the first move since expandNextBestBranch() and generatePositionTreeRecursive_computeEvalsYes() will both sort the tree as it generates it.
-	float topMoveBranchBest = this->root->children[0]->branchBest;
-	int root_children_L = this->root->children_L;
-	if(this->root->position->colorToMove=='w')
+	float topMoveBranchBest = root->children[0]->branchBest;
+	int root_children_L = root->children_L;
+	if(root->colorToMove=='w')
 	{
 		topMoveBranchBest-=EVALUATION_EQUIVALENCY_THRESHOLD;
 		while(i<root_children_L)
 		{
-			if(this->root->children[i]->branchBest>=topMoveBranchBest)
+			if(root->children[i]->branchBest>=topMoveBranchBest)
 				break;
 			i++; //increment while the next move is similar enough in evaluation to the best move
 		}
@@ -445,39 +426,39 @@ move PositionTree::getBestRandomMove()
 		topMoveBranchBest+=EVALUATION_EQUIVALENCY_THRESHOLD;
 		while(i<root_children_L)
 		{
-			if(this->root->children[i]->branchBest<=topMoveBranchBest)
+			if(root->children[i]->branchBest<=topMoveBranchBest)
 				break;
 			i++;
 		}
 	}
 	srand(time(0));
 	int randomIndex = rand()%i; //selects a random index from the range given by i
-	return this->root->children[randomIndex]->moveMade;
+	return root->children[randomIndex]->moveMade;
 }
 int8_t PositionTree::getGameState()
 {
-	if(this->root->drawByRepetition==true)
+	if(root->drawByRepetition==true)
 	{
 		return 6;
 	}
 	else
 	{
-		return this->root->position->positionState;
+		return root->position->positionState;
 	}
 }
 Position* PositionTree::getCurrentPosition()
 {
-	return this->root->position;
+	return root->position;
 }
 bool PositionTree::isValidMove(move moveToBeMade)
 {
-	for(int i=0;i<this->root->children_L;i++)
+	for(int i=0;i<root->children_L;i++)
 	{
-		if(this->root->children[i]->moveMade.startRank == moveToBeMade.startRank &&
-		this->root->children[i]->moveMade.startFile == moveToBeMade.startFile &&
-		this->root->children[i]->moveMade.endRank == moveToBeMade.endRank &&
-		this->root->children[i]->moveMade.endFile == moveToBeMade.endFile &&
-		this->root->children[i]->moveMade.endPieceType == moveToBeMade.endPieceType
+		if(root->children[i]->moveMade.startRank == moveToBeMade.startRank &&
+		root->children[i]->moveMade.startFile == moveToBeMade.startFile &&
+		root->children[i]->moveMade.endRank == moveToBeMade.endRank &&
+		root->children[i]->moveMade.endFile == moveToBeMade.endFile &&
+		root->children[i]->moveMade.endPieceType == moveToBeMade.endPieceType
 		)
 		{
 			return true;
@@ -487,7 +468,7 @@ bool PositionTree::isValidMove(move moveToBeMade)
 }
 bool PositionTree::nextMoveExists()
 {
-	if(this->root->children_L!=0)
+	if(root->children_L!=0)
 	{
 		return true;
 	}
@@ -499,16 +480,16 @@ void PositionTree::makeMove_shiftTree(const move moveMade)
 {
 	//1. Delete all sub trees from root that aren't the 'moveMade'
 	int i=0;
-	while(this->root->children_L>1)
+	while(root->children_L>1)
 	{
-		if(this->root->children[i]->moveMade.startRank != moveMade.startRank ||
-		this->root->children[i]->moveMade.startFile != moveMade.startFile ||
-		this->root->children[i]->moveMade.endRank != moveMade.endRank ||
-		this->root->children[i]->moveMade.endFile != moveMade.endFile ||
-		this->root->children[i]->moveMade.endPieceType != moveMade.endPieceType
+		if(root->children[i]->moveMade.startRank != moveMade.startRank ||
+		root->children[i]->moveMade.startFile != moveMade.startFile ||
+		root->children[i]->moveMade.endRank != moveMade.endRank ||
+		root->children[i]->moveMade.endFile != moveMade.endFile ||
+		root->children[i]->moveMade.endPieceType != moveMade.endPieceType
 		)//if the move doesn't match 'moveMade' then destroy subtree (this should just leave the node for the move that was actually made)
 		{
-			destroySubTree(this->root->children[i]);
+			destroySubTree(root->children[i]);
 		}
 		else
 		{
@@ -516,7 +497,15 @@ void PositionTree::makeMove_shiftTree(const move moveMade)
 		}
 	}
 	//2. Set root pointer to only remaining child of root (i.e. the node of the moveMade)
-	this->root = this->root->children[0];
+	root = root->children[0];
+	//3. If the position objects in the new root's children has been NULL'd then reinstantiate them
+	for(int i=0;i<root->children_L;i++)
+	{
+		if(root->children[i]->position==NULL)
+		{
+			root->children[i]->position = new Position(root->position,root->children[i]->moveMade);
+		}
+	}
 }
 bool PositionTree::makeMove(const move moveMade)
 {
@@ -524,7 +513,7 @@ bool PositionTree::makeMove(const move moveMade)
 	//1. check that the move passed is not a "null" move and game is in-play
 	if(moveMade.endPieceType=='\0')
 		return false;
-	if(this->root->position->positionState!=Position::positionstate_inplay)
+	if(root->position->positionState!=Position::positionstate_inplay)
 		return false;
 	//2. Check "moveMade" against tree to see if it is legal
 	validMove = this->isValidMove(moveMade);
@@ -538,7 +527,7 @@ bool PositionTree::makeMove(const move moveMade)
 }
 void PositionTree::debugFunction()
 {
-	destroySubTree(this->root->children[0]);
+	destroySubTree(root->children[0]);
 }
 
 //--Debug--
@@ -570,7 +559,7 @@ void PositionTree::printPositionTree_recursive(PositionTree::treenode* node)
 }
 void PositionTree::printPositionTree()
 {
-	printPositionTree_recursive(this->root);
+	printPositionTree_recursive(root);
 }
 void PositionTree::printPositionTree_recursive(PositionTree::treenode* node, int depth)
 {
@@ -600,5 +589,5 @@ void PositionTree::printPositionTree_recursive(PositionTree::treenode* node, int
 }
 void PositionTree::printPositionTree(int depth)
 {
-	printPositionTree_recursive(this->root, depth);
+	printPositionTree_recursive(root, depth);
 }
