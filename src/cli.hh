@@ -14,8 +14,8 @@ class CLI
 {
     private:
         bool usingUCI = false;
-        UCI bluespiralUCI;
-        std::vector<std::string> tokens;
+        UCI* bluespiralUCI;
+        std::vector<std::string> commandTokens;
 
     public:
         CLI();

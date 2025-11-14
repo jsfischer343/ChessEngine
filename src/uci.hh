@@ -3,17 +3,51 @@
 #include <iostream>
 #include <cstring>
 #include <vector>
+#include <regex>
 #include "global.hh"
+#include "position.hh"
+#include "positiontree.hh"
 
 #define MAX_COMMAND_TOKENS 100
 
 class UCI
 {
     private:
-        //STATES
-        bool state_debug = false;
-        bool state_isready = false;
-        std::vector<std::string> tokens;
+        struct ucistates
+        {
+            bool debug = false;
+            bool isready = false;
+            bool stop = false;
+        };
+        struct ucioptions
+        {
+            std::string dummy = "";
+        };
+        struct ucigoparams
+        {
+            std::vector<move> searchMoves;
+            bool ponder = false;
+            long wTime = -1;
+            long bTime = -1;
+            long wInc = -1;
+            long bInc = -1;
+            int movesToGo = -1;
+            int depth = 1000;
+            int nodes = 50000000;
+            int mate = -1;
+            long moveTime = -1;
+            bool infinite = false;
+        };
+        typedef struct ucistates ucistates;
+        typedef struct ucioptions ucioptions;
+        typedef struct ucigoparams ucigoparams;
+
+        //DATA
+        std::vector<std::string> commandTokens;
+        ucistates uciStates;
+        ucioptions uciOptions;
+        ucigoparams uciGoParams;
+        PositionTree* uciPositionTree = NULL;
 
     public:
         UCI();
@@ -30,7 +64,9 @@ class UCI
         void command_GUItoEngine_register();
         void command_GUItoEngine_ucinewgame();
         void command_GUItoEngine_position();
+            void command_GUItoEngine_position_makeMoves(int startingIndex);
         void command_GUItoEngine_go();
+            bool command_GUItoEngine_go_isGoCommand(std::string command);
         void command_GUItoEngine_stop();
         void command_GUItoEngine_ponderhit();
         void command_GUItoEngine_quit();
@@ -45,6 +81,10 @@ class UCI
         void command_EnginetoGUI_option();
 
         //Utility
+        move uciNotation_TO_move(std::string uciMoveString);
+        std::string move_TO_uciNotation(move engineMove);
+        void setupPositionTree();
+        void setupPositionTree(std::string fenString);
 };
 
 #endif

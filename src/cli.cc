@@ -2,25 +2,30 @@
 
 CLI::CLI()
 {
+	bluespiralUCI = NULL;
 }
 CLI::~CLI()
 {
+	if(bluespiralUCI!=NULL)
+	{
+		delete bluespiralUCI;
+	}
 }
 
 void CLI::parseCommand(std::string userInput)
 {
-    if(userInput=="exit")
+    if(userInput=="exit"||userInput=="quit")
     {
         return;
     }
     //uci command stream: send to uci
     if(usingUCI)
     {
-        bluespiralUCI.parseCommand(userInput);
+        bluespiralUCI->parseCommand(userInput);
         return;
     }
 
-    tokens.clear(); //reset tokens from last command
+    commandTokens.clear(); //reset commandTokens from last command
     //find start of command token
     if(userInput[0]=='\0')
     {
@@ -39,10 +44,10 @@ void CLI::parseCommand(std::string userInput)
 	std::string command = userInput.substr(tokenStart,tokenEnd-tokenStart);
     userInput.erase(0,tokenEnd);
 
-    //save tokens (i.g. arguments)
+    //save commandTokens (i.g. arguments)
     bool dontPushToken = false;
     bool moreTokens = true;
-    while(moreTokens&&tokens.size()<=MAX_COMMAND_TOKENS)
+    while(moreTokens&&commandTokens.size()<=MAX_COMMAND_TOKENS)
     {
         if(userInput[0]=='\0')
         {
@@ -72,7 +77,7 @@ void CLI::parseCommand(std::string userInput)
         } while(userInput[tokenEnd]!=' '&&userInput[tokenEnd]!='\t');
         if(!dontPushToken)
         {
-            tokens.push_back(userInput.substr(tokenStart,tokenEnd-tokenStart));
+            commandTokens.push_back(userInput.substr(tokenStart,tokenEnd-tokenStart));
             userInput.erase(0,tokenEnd);
         }
     }
@@ -106,16 +111,17 @@ void CLI::parseCommand(std::string userInput)
 
 void CLI::command_uci()
 {
-    if(tokens.size()!=0)
+    if(commandTokens.size()!=0)
     {
         printHelp("uci");
         return;
     }
+    bluespiralUCI = new UCI();
     usingUCI = true;
 }
 void CLI::command_botvsbot()
 {
-    if(tokens.size()!=0)
+    if(commandTokens.size()!=0)
     {
         printHelp("botvsbot");
         return;
@@ -159,19 +165,19 @@ void CLI::command_botvsbot()
 }
 void CLI::command_humanvsbot()
 {
-    if(tokens.size()>1)
+    if(commandTokens.size()>1)
     {
         printHelp("humanvsbot");
         return;
     }
     char humanColor;
-    if(tokens.size()==1)
+    if(commandTokens.size()==1)
     {
-        if(tokens.at(0)=="w")
+        if(commandTokens.at(0)=="w")
         {
             humanColor='w';
         }
-        else if(tokens.at(0)=="b")
+        else if(commandTokens.at(0)=="b")
         {
             humanColor='b';
         }
@@ -291,7 +297,7 @@ void CLI::command_humanvsbot()
 }
 void CLI::command_humanvshuman()
 {
-    if(tokens.size()!=0)
+    if(commandTokens.size()!=0)
     {
         printHelp("humanvshuman");
         return;

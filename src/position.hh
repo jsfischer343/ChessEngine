@@ -168,16 +168,16 @@ class Position
 		void printAllMoves();
 
 		//-Utility-
-		bool onBoard(int8_t rank, int8_t file);
+		static bool onBoard(int8_t rank, int8_t file);
 		bool adjacentToKing(int8_t rank, int8_t file, piece* kingPtr);
-		char engineRank_TO_notationRank(int8_t engineRank);
-		char engineFile_TO_notationFile(int8_t engineFile);
-		int8_t notationRank_TO_engineRank(char notationRank);
-		int8_t notationFile_TO_engineFile(char notationFile);
-		char enginePieceType_TO_notationPieceType(char enginePieceType, char enginePieceColor);
-		bool isFileOrRank(char charInQuestion);
-		bool isRank(char charInQuestion);
-		bool isFile(char charInQuestion);
+		static char engineRank_TO_notationRank(int8_t engineRank);
+		static char engineFile_TO_notationFile(int8_t engineFile);
+		static int8_t notationRank_TO_engineRank(char notationRank);
+		static int8_t notationFile_TO_engineFile(char notationFile);
+		static char enginePieceType_TO_notationPieceType(char enginePieceType, char enginePieceColor);
+		static bool isFileOrRank(char charInQuestion);
+		static bool isRank(char charInQuestion);
+		static bool isFile(char charInQuestion);
 		
 	private:
 		//-Memory-

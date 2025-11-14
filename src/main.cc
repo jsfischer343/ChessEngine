@@ -1,6 +1,11 @@
 #include <iostream>
 #include <chrono>
 #include <sys/resource.h>
+#include "global.hh"
+#include "position.hh"
+#include "positiontree.hh"
+#include "game.hh"
+#include "uci.hh"
 #include "cli.hh"
 
 
@@ -14,7 +19,7 @@ void printMemoryUsage()
 
 void printWelcomeText()
 {
-	printf("Bluespiral Chess Engine, Version %s\n",GLOBAL_BLUESPIRAL_VERSION);
+	printf("Bluespiral Chess Engine, Version %s, 2025\n",GLOBAL_BLUESPIRAL_VERSION);
 	printf("%s\n",GLOBAL_CODE_SOURCE);
 	return;
 }
@@ -37,7 +42,7 @@ int main()
 	do {
 		getline(std::cin, userInput);
 		bluespiralCLI.parseCommand(userInput);
-	} while(userInput!="exit");
+	} while(userInput!="exit" && userInput!="quit");
 
 
 	auto endTime = std::chrono::high_resolution_clock::now();

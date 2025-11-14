@@ -220,6 +220,7 @@ void PositionTree::destroyEntireTree_recursive(treenode* node)
 	{
 		delete node->position;
 		delete node;
+		node = NULL;
 	}
 	else
 	{
@@ -230,12 +231,14 @@ void PositionTree::destroyEntireTree_recursive(treenode* node)
 		delete[] node->children;
 		delete node->position;
 		delete node;
+		node = NULL;
 	}
 }
 void PositionTree::destroyEntireTree()
 {
     if(initNode->children_L==0)
     {
+		delete initNode->position;
         delete initNode;
         initNode = NULL;
     }
@@ -246,6 +249,7 @@ void PositionTree::destroyEntireTree()
             destroyEntireTree_recursive(initNode->children[i]);
         }
         delete[] initNode->children;
+		delete initNode->position;
         delete initNode;
         initNode = NULL;
     }

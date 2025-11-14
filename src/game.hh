@@ -10,13 +10,13 @@
 #include "position.hh"
 #include "positiontree.hh"
 
+#define BRANCHES_TO_EXPAND 3000 //Total branches that will be expanded to determine best move in deterministic approach
 #define TOTAL_PREVIOUS_POSITIONS 25	//Total previous position objects that will be stored (queue fashion), mostly for the purpose of determining draw by repetition
 
 class Game
 {
-	public:
 	//DATA
-		Position* startingPosition;
+	public:
 		PositionTree* gamePositionTree;
 		move bestMove;
 	//FUNCTIONS
@@ -26,11 +26,11 @@ class Game
 
 		int8_t getGameState();
 		Position* getCurrentPosition();
+		void printBoard();
 		void printBestMove();
 		void updateBestMove();
 		void updateBestMoveRandom();
 		bool makeMove(const move moveMade);
-		void printBoard();
 };
 
 #endif

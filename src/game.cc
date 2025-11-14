@@ -3,17 +3,14 @@
 //-Constructors-
 Game::Game()
 {
-	startingPosition = new Position();
-	gamePositionTree = new PositionTree(startingPosition,2);
+	gamePositionTree = new PositionTree(new Position(),2);
 }
 Game::Game(const char* FENString)
 {
-	startingPosition = new Position(FENString);
-	gamePositionTree = new PositionTree(startingPosition,2);
+	gamePositionTree = new PositionTree(new Position(FENString),2);
 }
 Game::~Game()
 {
-	delete startingPosition;
 	delete gamePositionTree;
 }
 
@@ -25,6 +22,10 @@ Position* Game::getCurrentPosition()
 {
 	return gamePositionTree->getCurrentPosition();
 }
+void Game::printBoard()
+{
+	gamePositionTree->getCurrentPosition()->printBoard();
+}
 void Game::printBestMove()
 {
 	char* bestMoveInStandardNotation = gamePositionTree->getCurrentPosition()->getNotation(bestMove);
@@ -33,12 +34,12 @@ void Game::printBestMove()
 }
 void Game::updateBestMove()
 {
-	gamePositionTree->expandXNextBestBranches(5000);
+	gamePositionTree->expandXNextBestBranches(BRANCHES_TO_EXPAND);
 	bestMove = gamePositionTree->getBestMove();
 }
 void Game::updateBestMoveRandom()
 {
-	gamePositionTree->expandXNextBestBranches(5000);
+	gamePositionTree->expandXNextBestBranches(BRANCHES_TO_EXPAND);
 	bestMove = gamePositionTree->getBestRandomMove();
 }
 bool Game::makeMove(const move moveMade)
@@ -46,8 +47,4 @@ bool Game::makeMove(const move moveMade)
 	bool moveMadeBool = gamePositionTree->makeMove(moveMade);
 	gamePositionTree->expandFromRoot(2);
 	return moveMadeBool;
-}
-void Game::printBoard()
-{
-	gamePositionTree->getCurrentPosition()->printBoard();
 }
