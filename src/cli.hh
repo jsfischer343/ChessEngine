@@ -8,7 +8,7 @@
 #include "uci.hh"
 #include "game.hh"
 
-#define MAX_COMMAND_TOKENS 100
+#define MAX_COMMAND_TOKENS 200
 
 class CLI
 {

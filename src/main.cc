@@ -19,8 +19,7 @@ void printMemoryUsage()
 
 void printWelcomeText()
 {
-	printf("Bluespiral Chess Engine, Version %s, 2025\n",GLOBAL_BLUESPIRAL_VERSION);
-	printf("%s\n",GLOBAL_CODE_SOURCE);
+	printf("Bluespiral Chess Engine, Version %s, 2025, %s\n",GLOBAL_BLUESPIRAL_VERSION,GLOBAL_CODE_SOURCE);
 	return;
 }
 

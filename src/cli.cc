@@ -26,15 +26,13 @@ void CLI::parseCommand(std::string userInput)
     }
 
     commandTokens.clear(); //reset commandTokens from last command
-    //find start of command token
-    if(userInput[0]=='\0')
+    if(userInput.size()==0)
     {
         printHelp();
         return;
     }
-	int tokenStart=0;
 
-	//find end of command token
+	int tokenStart=0;
 	int tokenEnd=tokenStart;
 	do {
 		tokenEnd++;
@@ -366,7 +364,6 @@ void CLI::printHelp()
     printf("humanvshuman:\tRuns a human vs human game printing the board after every move.\n");
     printf("help [command]:\tProvides detailed information about each command.\n");
 }
-
 void CLI::printHelp(std::string command)
 {
     printf("WIP\n");

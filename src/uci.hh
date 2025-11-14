@@ -4,11 +4,13 @@
 #include <cstring>
 #include <vector>
 #include <regex>
+#include <thread>
 #include "global.hh"
 #include "position.hh"
 #include "positiontree.hh"
 
-#define MAX_COMMAND_TOKENS 100
+#define MAX_COMMAND_TOKENS 200
+#define SEARCH_TIME_MARGIN 10 //margin in milliseconds that is used to ensure that the engine ends on time
 
 class UCI
 {
@@ -32,8 +34,8 @@ class UCI
             long wInc = -1;
             long bInc = -1;
             int movesToGo = -1;
-            int depth = 1000;
-            int nodes = 50000000;
+            int depth = -1;
+            int nodes = -1;
             int mate = -1;
             long moveTime = -1;
             bool infinite = false;
@@ -49,6 +51,9 @@ class UCI
         ucigoparams uciGoParams;
         PositionTree* uciPositionTree = NULL;
 
+        std::thread* goThread = NULL;
+        std::chrono::time_point<std::chrono::steady_clock> goThread_startTime;
+
     public:
         UCI();
         ~UCI();
@@ -57,28 +62,31 @@ class UCI
 
     private:
         //UCI commands
-        //void command_GUItoEngine_uci(); //caught and managed by CLI class
-        void command_GUItoEngine_debug();
-        void command_GUItoEngine_isready();
-        void command_GUItoEngine_setoption();
-        void command_GUItoEngine_register();
-        void command_GUItoEngine_ucinewgame();
-        void command_GUItoEngine_position();
-            void command_GUItoEngine_position_makeMoves(int startingIndex);
-        void command_GUItoEngine_go();
-            bool command_GUItoEngine_go_isGoCommand(std::string command);
-        void command_GUItoEngine_stop();
-        void command_GUItoEngine_ponderhit();
-        void command_GUItoEngine_quit();
+        //void in_uci(); //caught and managed by CLI class
+        void in_debug();
+        void in_isready();
+        void in_setoption();
+        void in_register();
+        void in_ucinewgame();
+        void in_position();
+            void in_position_makeMoves(int startingCommandTokenIndex);
+        void in_go();
+            void in_go_parse();
+            void in_go_searchThread();
+                bool in_go_searchThread_shouldStop();
+            bool in_go_isGoCommand(std::string command);
+        void in_stop();
+        void in_ponderhit();
+        void in_quit();
 
-        void command_EnginetoGUI_id();
-        void command_EnginetoGUI_uciok();
-        void command_EnginetoGUI_readyok();
-        void command_EnginetoGUI_bestmove();
-        void command_EnginetoGUI_copyprotection();
-        void command_EnginetoGUI_registration();
-        void command_EnginetoGUI_info();
-        void command_EnginetoGUI_option();
+        void out_id();
+        void out_uciok();
+        void out_readyok();
+        void out_bestmove(move bestMove);
+        // void out_copyprotection();
+        // void out_registration();
+        void out_info();
+        void out_sendOptions();
 
         //Utility
         move uciNotation_TO_move(std::string uciMoveString);

@@ -3,9 +3,21 @@
 
 UCI::UCI()
 {
+	out_id();
+	out_sendOptions();
+	out_uciok();
+    uciStates.isready = true;
 }
 UCI::~UCI()
 {
+    if(goThread!=NULL)
+    {
+        if(goThread->joinable())
+        {
+            goThread->join();
+        }
+        delete goThread;
+    }
     if(uciPositionTree!=NULL)
     {
         delete uciPositionTree;
@@ -145,39 +157,39 @@ void UCI::parseCommand(std::string userInput)
 
     if(command=="debug")
     {
-        command_GUItoEngine_debug();
+        in_debug();
     }
     else if(command=="isready")
     {
-        command_GUItoEngine_isready();
+        in_isready();
     }
     else if(command=="setoption")
     {
-        command_GUItoEngine_setoption();
+        in_setoption();
     }
     else if(command=="register")
     {
-        command_GUItoEngine_register();
+        in_register();
     }
     else if(command=="ucinewgame")
     {
-        command_GUItoEngine_ucinewgame();
+        in_ucinewgame();
     }
     else if(command=="position")
     {
-        command_GUItoEngine_position();
+        in_position();
     }
     else if(command=="go")
     {
-        command_GUItoEngine_go();
+        in_go();
     }
     else if(command=="stop")
     {
-        command_GUItoEngine_stop();
+        in_stop();
     }
     else if(command=="ponderhit")
     {
-        command_GUItoEngine_ponderhit();
+        in_ponderhit();
     }
     else
     {
@@ -186,7 +198,7 @@ void UCI::parseCommand(std::string userInput)
 }
 
 //UCI commands
-void UCI::command_GUItoEngine_debug()
+void UCI::in_debug()
 {
     if(commandTokens.size()==1)
     {
@@ -200,14 +212,14 @@ void UCI::command_GUItoEngine_debug()
         }
     }
 }
-void UCI::command_GUItoEngine_isready()
+void UCI::in_isready()
 {
     if(uciStates.isready)
     {
         std::cout << "readyok" << std::endl;
     }
 }
-void UCI::command_GUItoEngine_setoption()
+void UCI::in_setoption()
 {
     if(commandTokens.size()==0)
     {
@@ -269,29 +281,29 @@ void UCI::command_GUItoEngine_setoption()
         uciOptions.dummy = optionValue;
     }
 }
-void UCI::command_GUItoEngine_register()
+void UCI::in_register()
 {
     //unused
     std::cerr << "error250: this engine does not support registration" << std::endl;
 }
-void UCI::command_GUItoEngine_ucinewgame()
+void UCI::in_ucinewgame()
 {
     uciGoParams = ucigoparams();
     if(uciPositionTree!=NULL)
     {
-        delete PositionTree;
+        delete uciPositionTree;
     }
 }
-void UCI::command_GUItoEngine_position_makeMoves(int startingIndex)
+void UCI::in_position_makeMoves(int startingCommandTokenIndex)
 {
-    if(commandTokens.at(startingIndex)!="moves")
+    if(commandTokens.at(startingCommandTokenIndex)!="moves")
     {
         std::cerr << "error279: position command 'moves' signifier missing" << std::endl;
         return;
     }
     else
     {
-        for(int i=startingIndex+1;i<commandTokens.size();i++)
+        for(int i=startingCommandTokenIndex+1;i<commandTokens.size();i++)
         {
             if(!(uciPositionTree->makeMove(uciNotation_TO_move(commandTokens.at(i)))))
             {
@@ -304,7 +316,7 @@ void UCI::command_GUItoEngine_position_makeMoves(int startingIndex)
         }
     }
 }
-void UCI::command_GUItoEngine_position()
+void UCI::in_position()
 {
     if(commandTokens.size()==0)
     {
@@ -345,7 +357,7 @@ void UCI::command_GUItoEngine_position()
         }
         else
         {
-            command_GUItoEngine_position_makeMoves(7);
+            in_position_makeMoves(7);
         }
     }
     else if(commandTokens.at(0)=="startpos")
@@ -357,15 +369,15 @@ void UCI::command_GUItoEngine_position()
         }
         else
         {
-            command_GUItoEngine_position_makeMoves(1);
+            in_position_makeMoves(1);
         }
     }
     else
     {
-        command_GUItoEngine_position_makeMoves(0);
+        in_position_makeMoves(0);
     }
 }
-bool UCI::command_GUItoEngine_go_isGoCommand(std::string command)
+bool UCI::in_go_isGoCommand(std::string command)
 {
     if(command=="searchmoves")
     {
@@ -417,7 +429,7 @@ bool UCI::command_GUItoEngine_go_isGoCommand(std::string command)
     }
     return false;
 }
-void UCI::command_GUItoEngine_go()
+void UCI::in_go_parse()
 {
     if(uciPositionTree==NULL)
     {
@@ -577,7 +589,7 @@ void UCI::command_GUItoEngine_go()
         int i=1;
         while(searchMovesIndex+i<commandTokens.size())
         {
-            if(command_GUItoEngine_go_isGoCommand(commandTokens.at(searchMovesIndex+i))) //terminate loop when next token is a recognized sub command
+            if(in_go_isGoCommand(commandTokens.at(searchMovesIndex+i))) //terminate loop when next token is a recognized sub command
             {
                 break;
             }
@@ -602,7 +614,7 @@ void UCI::command_GUItoEngine_go()
     std::regex longTypeRegex("[0-9]{1,17}");
     if(wTimeIndex!=-1 && wTimeIndex+1<commandTokens.size())
     {
-        if(!(command_GUItoEngine_go_isGoCommand(commandTokens.at(wTimeIndex+1))))
+        if(!(in_go_isGoCommand(commandTokens.at(wTimeIndex+1))))
         {
             if(!(std::regex_match(commandTokens.at(wTimeIndex+1),longTypeRegex)))
             {
@@ -616,7 +628,7 @@ void UCI::command_GUItoEngine_go()
     }
     if(bTimeIndex!=-1 && bTimeIndex+1<commandTokens.size())
     {
-        if(!(command_GUItoEngine_go_isGoCommand(commandTokens.at(bTimeIndex+1))))
+        if(!(in_go_isGoCommand(commandTokens.at(bTimeIndex+1))))
         {
             if(!(std::regex_match(commandTokens.at(bTimeIndex+1),longTypeRegex)))
             {
@@ -630,7 +642,7 @@ void UCI::command_GUItoEngine_go()
     }
     if(wIncIndex!=-1 && wIncIndex+1<commandTokens.size())
     {
-        if(!(command_GUItoEngine_go_isGoCommand(commandTokens.at(wIncIndex+1))))
+        if(!(in_go_isGoCommand(commandTokens.at(wIncIndex+1))))
         {
             if(!(std::regex_match(commandTokens.at(wIncIndex+1),longTypeRegex)))
             {
@@ -644,7 +656,7 @@ void UCI::command_GUItoEngine_go()
     }
     if(bIncIndex!=-1 && bIncIndex+1<commandTokens.size())
     {
-        if(!(command_GUItoEngine_go_isGoCommand(commandTokens.at(bIncIndex+1))))
+        if(!(in_go_isGoCommand(commandTokens.at(bIncIndex+1))))
         {
             if(!(std::regex_match(commandTokens.at(bIncIndex+1),longTypeRegex)))
             {
@@ -658,7 +670,7 @@ void UCI::command_GUItoEngine_go()
     }
     if(movesToGoIndex!=-1 && movesToGoIndex+1<commandTokens.size())
     {
-        if(!(command_GUItoEngine_go_isGoCommand(commandTokens.at(movesToGoIndex+1))))
+        if(!(in_go_isGoCommand(commandTokens.at(movesToGoIndex+1))))
         {
             if(!(std::regex_match(commandTokens.at(movesToGoIndex+1),integerTypeRegex)))
             {
@@ -672,7 +684,7 @@ void UCI::command_GUItoEngine_go()
     }
     if(depthIndex!=-1 && depthIndex+1<commandTokens.size())
     {
-        if(!(command_GUItoEngine_go_isGoCommand(commandTokens.at(depthIndex+1))))
+        if(!(in_go_isGoCommand(commandTokens.at(depthIndex+1))))
         {
             if(!(std::regex_match(commandTokens.at(depthIndex+1),integerTypeRegex)))
             {
@@ -686,7 +698,7 @@ void UCI::command_GUItoEngine_go()
     }
     if(nodesIndex!=-1 && nodesIndex+1<commandTokens.size())
     {
-        if(!(command_GUItoEngine_go_isGoCommand(commandTokens.at(nodesIndex+1))))
+        if(!(in_go_isGoCommand(commandTokens.at(nodesIndex+1))))
         {
             if(!(std::regex_match(commandTokens.at(nodesIndex+1),integerTypeRegex)))
             {
@@ -700,7 +712,7 @@ void UCI::command_GUItoEngine_go()
     }
     if(mateIndex!=-1 && mateIndex+1<commandTokens.size())
     {
-        if(!(command_GUItoEngine_go_isGoCommand(commandTokens.at(mateIndex+1))))
+        if(!(in_go_isGoCommand(commandTokens.at(mateIndex+1))))
         {
             if(!(std::regex_match(commandTokens.at(mateIndex+1),integerTypeRegex)))
             {
@@ -714,7 +726,7 @@ void UCI::command_GUItoEngine_go()
     }
     if(moveTimeIndex!=-1 && moveTimeIndex+1<commandTokens.size())
     {
-        if(!(command_GUItoEngine_go_isGoCommand(commandTokens.at(moveTimeIndex+1))))
+        if(!(in_go_isGoCommand(commandTokens.at(moveTimeIndex+1))))
         {
             if(!(std::regex_match(commandTokens.at(moveTimeIndex+1),longTypeRegex)))
             {
@@ -731,39 +743,93 @@ void UCI::command_GUItoEngine_go()
         uciGoParams.infinite = true;
     }
 }
-void UCI::command_GUItoEngine_stop()
+bool UCI::in_go_searchThread_shouldStop()
+{
+    if(uciStates.stop==true)
+    {
+        return true;
+    }
+    if(uciGoParams.infinite == false)
+    {
+        if(uciGoParams.moveTime!=-1)
+        {
+            std::chrono::duration duration = std::chrono::steady_clock::now() - goThread_startTime;
+            std::chrono::duration duration_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+            if((uciGoParams.moveTime-SEARCH_TIME_MARGIN)<duration_milliseconds.count())
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+void UCI::in_go_searchThread()
+{
+    while(!in_go_searchThread_shouldStop())
+    {
+        uciPositionTree->expandNextBestBranch();
+    }
+    out_bestmove(uciPositionTree->getBestMove());
+    uciStates.isready = true;
+}
+void UCI::in_go()
+{
+    in_go_parse();
+    uciStates.stop = false;
+    if(goThread!=NULL)
+    {
+        if(goThread->joinable())
+        {
+            goThread->join();
+        }
+        delete goThread;
+    }
+    uciStates.isready = false;
+    goThread_startTime = std::chrono::steady_clock::now();
+    goThread = new std::thread(&UCI::in_go_searchThread, this);
+}
+void UCI::in_stop()
 {
     uciStates.stop = true;
 }
-void UCI::command_GUItoEngine_ponderhit()
+void UCI::in_ponderhit()
 {
     //???
     std::cerr << "error716: command not implemented" << std::endl;
 }
 
-void UCI::command_EnginetoGUI_id()
+void UCI::out_id()
+{
+    std::cout << "id name BlueSpiral " << GLOBAL_BLUESPIRAL_VERSION << std::endl;
+	std::cout << "id author " << GLOBAL_AUTHOR << std::endl;
+}
+void UCI::out_uciok()
+{
+    std::cout << "uciok" << std::endl;
+}
+void UCI::out_readyok()
+{
+    std::cout << "readyok" << std::endl;
+}
+void UCI::out_bestmove(move bestMove)
+{
+    std::string uciNotationBestMove = move_TO_uciNotation(bestMove);
+    std::cout << "bestmove " << uciNotationBestMove << std::endl;
+}
+// void UCI::out_copyprotection()
+// {
+//     //not used
+// }
+// void UCI::out_registration()
+// {
+//     //not used
+// }
+void UCI::out_info()
 {
 }
-void UCI::command_EnginetoGUI_uciok()
+void UCI::out_sendOptions()
 {
-}
-void UCI::command_EnginetoGUI_readyok()
-{
-}
-void UCI::command_EnginetoGUI_bestmove()
-{
-}
-void UCI::command_EnginetoGUI_copyprotection()
-{
-}
-void UCI::command_EnginetoGUI_registration()
-{
-}
-void UCI::command_EnginetoGUI_info()
-{
-}
-void UCI::command_EnginetoGUI_option()
-{
+    std::cout << "option name dummy type string default test123" << std::endl;
 }
 
 //Utility
@@ -811,15 +877,11 @@ std::string UCI::move_TO_uciNotation(move engineMove)
     }
     else
     {
-		uciMove.push_back(Position::engineRank_TO_notationRank(engineMove.startFile));
-        uciMove.push_back(Position::engineFile_TO_notationFile(engineMove.startRank));
-        uciMove.push_back(Position::engineRank_TO_notationRank(engineMove.endFile));
-        uciMove.push_back(Position::engineFile_TO_notationFile(engineMove.endRank));
-        if(uciPositionTree->getCurrentPosition()->theBoard[engineMove.startRank][engineMove.startFile].piecePtr==NULL)
-        {
-            //do nothing
-        }
-        else
+		uciMove.push_back(Position::engineFile_TO_notationFile(engineMove.startFile));
+        uciMove.push_back(Position::engineRank_TO_notationRank(engineMove.startRank));
+        uciMove.push_back(Position::engineFile_TO_notationFile(engineMove.endFile));
+        uciMove.push_back(Position::engineRank_TO_notationRank(engineMove.endRank));
+        if(uciPositionTree->getCurrentPosition()->theBoard[engineMove.startRank][engineMove.startFile].piecePtr!=NULL)
         {
             if(uciPositionTree->getCurrentPosition()->theBoard[engineMove.startRank][engineMove.startFile].piecePtr->type!=engineMove.endPieceType) //if start piece type and end piece type are different then this is probably a promotion
             {
