@@ -7,6 +7,7 @@
 #include <cctype>
 #include <cmath>
 #include "global.hh"
+#include "move.hh"
 
 #define MAX_PIECES 16
 #define MAX_PIECE_TARGETS 27	//Max number of targets a piece can have (this will never be greater than 27 in a normal chess game)
@@ -16,32 +17,37 @@
 
 //Instant Evaluation Tuning Parameters
 //Symmetric Parameters
-#define PIECE_CONTROL_WEIGHT 0.1	//weight given to controlling a square with a piece on it (in proportion to that piece)
-#define SQUARE_CONTROL_WEIGHT 0.1	//weight given to controlling an empty square
-#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_DEFENSIVE 0.15
-#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_OFFENSIVE 0.15
-#define PAWN_WEIGHT_1 0.02 //value of pawn that is 1 out 6 squares from promotion
-#define PAWN_WEIGHT_2 0.08 //and so on
-#define PAWN_WEIGHT_3 0.15
-#define PAWN_WEIGHT_4 0.5
-#define PAWN_WEIGHT_PASSED_1 0.5
-#define PAWN_WEIGHT_PASSED_2 0.5
-#define PAWN_WEIGHT_PASSED_3 1
-#define PAWN_WEIGHT_PASSED_4 1.2
-#define PAWN_WEIGHT_PASSED_5 2 //value of pawn that is one square from promotion
+#define PIECE_CONTROL_WEIGHT 0.005	//weight given to controlling a square with a piece on it (in proportion to that piece)
+#define SQUARE_CONTROL_WEIGHT 0.01	//weight given to controlling an empty square
+#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_DEFENSIVE 0
+#define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_OFFENSIVE 0
+#define PAWN_WEIGHT_1 0 //value of pawn that is 1 out 6 squares from promotion
+#define PAWN_WEIGHT_2 0 //and so on
+#define PAWN_WEIGHT_3 0
+#define PAWN_WEIGHT_4 0
+#define PAWN_WEIGHT_PASSED_1 0
+#define PAWN_WEIGHT_PASSED_2 0
+#define PAWN_WEIGHT_PASSED_3 0.1
+#define PAWN_WEIGHT_PASSED_4 0.2
+#define PAWN_WEIGHT_PASSED_5 0.3 //value of pawn that is one square from promotion
 //Asymmetric Parameters
 #define TURN_BASED_CONTROL_BONUS 1 //multiplicative factor for controlling a piece on your turn
-
-//--Move--
-struct move
-{
-	int8_t startRank = -1;
-	int8_t startFile = -1;
-	int8_t endRank = -1;
-	int8_t endFile = -1;
-	char endPieceType = '\0'; //needed for promotion moves
-};
-typedef struct move move;
+// // //Symmetric Parameters
+// // #define PIECE_CONTROL_WEIGHT 0.1	//weight given to controlling a square with a piece on it (in proportion to that piece)
+// // #define SQUARE_CONTROL_WEIGHT 0.05	//weight given to controlling an empty square
+// // #define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_DEFENSIVE 0.02
+// // #define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_OFFENSIVE 0.02
+// // #define PAWN_WEIGHT_1 0.05 //value of pawn that is 1 out 6 squares from promotion
+// // #define PAWN_WEIGHT_2 0.1 //and so on
+// // #define PAWN_WEIGHT_3 0.15
+// // #define PAWN_WEIGHT_4 0.3
+// // #define PAWN_WEIGHT_PASSED_1 0.25
+// // #define PAWN_WEIGHT_PASSED_2 0.4
+// // #define PAWN_WEIGHT_PASSED_3 0.75
+// // #define PAWN_WEIGHT_PASSED_4 1.2
+// // #define PAWN_WEIGHT_PASSED_5 1.8 //value of pawn that is one square from promotion
+// // //Asymmetric Parameters
+// // #define TURN_BASED_CONTROL_BONUS 1 //multiplicative factor for controlling a piece on your turn
 
 class Position
 {
@@ -141,24 +147,25 @@ class Position
 		//-Constructors-
 		Position();
 		Position(const char* FENString);
-		Position(const Position& lastPosition, const move moveMade);
 		Position(const Position* lastPosition, const move moveMade);
 	private:
-		void castlingConstructor(const Position& lastPosition, const int8_t castlingCode); //used to finish up construction when the last move was castling
-		void castlingConstructor(const Position* lastPosition, const int8_t castlingCode);
+		void castlingConstructor(const Position* lastPosition, const int8_t castlingCode);//used to finish up construction when the move made was castling
 	public:
 		~Position();
 
 		//-Get-
-		int getTotalMoves();
-		move* getAllMoves();
-		char* getNotation(const move& moveMade);
-		move getMoveFromNotation(const char* notation);
-		int getTotalTargeters(square* squarePtr, char color);
-		int getTotalMovers(square* squarePtr, char color);
-		char getPieceColor(square* squarePtr);
-		piece* getKingPtr(char color);
-		float getInstantEval();
+		int getTotalMoves() const;
+		move* getAllMoves() const;
+		char* getNotation(const move& moveMade) const;
+		move getMoveFromNotation(const char* notation) const;
+		int getTotalTargeters(square* squarePtr, char color) const;
+		int getTotalMovers(square* squarePtr, char color) const;
+		char getPieceColor(square* squarePtr) const;
+		char getPieceColor(int8_t rank, int8_t file) const;
+		char getPieceType(square* squarePtr) const;
+		char getPieceType(int8_t rank, int8_t file) const;
+		piece* getKingPtr(char color) const;
+		float getInstantEval() const;
 
 		//-Debug Information-
 		void printBoard();

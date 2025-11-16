@@ -7,12 +7,14 @@
 #include <cstddef>
 #include <cctype>
 #include <ctime>
+#include <vector>
 #include "global.hh"
+#include "move.hh"
 #include "position.hh"
 
 #define POSITIONTREE_MEMORY_LIMIT 820*1024 //820MiB
 #define POSITION_OBJ_EPHEMERAL_DEPTH 3 //nodes at this depth will no longer save their position obj and will instead only instantiate it when needed (purpose being to save memory as position objects take up excessive memory)
-#define MAX_DEPTH 5 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
+#define MAX_DEPTH 6 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
 #define EVALUATION_EQUIVALENCY_THRESHOLD 0.02 //The differential threshold that is used to determine if two moves have 'essentially' equal evaluation
 
 
@@ -48,6 +50,8 @@ class PositionTree
 
     public:
 		//FUNCTIONS
+		PositionTree(int depth);
+		PositionTree(const char* startingPositionFEN, int depth);
 		PositionTree(Position* startingPosition, int depth);
 		~PositionTree();
 
@@ -59,8 +63,8 @@ class PositionTree
 			void generatePositionTreeRecursive_destroyPositionObjsRecursiveUpwards(treenode* node);
         //Expand
         void expandTree(treenode* startingNode, int depth);
-	public:
 		void expandFromRoot(int depth);
+	public:
 		bool expandNextBestBranch();
 		bool expandXNextBestBranches(int numberOfBranches); //run expandNextBestBranch X number of times
 	private:
@@ -79,22 +83,25 @@ class PositionTree
 
     //--Memory--
 		long getMemoryUsage();
-		void treeMemoryOverflow();
+		void warnTreeMemoryOverflow();
 
     public:
 	//--Get--
+		//Moves
 		move getBestMove();
 		move getBestRandomMove(); //if there are multiple moves with less than EVALUATION_EQUIVALENCY_THRESHOLD of difference then randomly pick one
+		bool nextMoveExists();
+		bool isValidMove(move moveToBeMade);
+		//Game
 		int8_t getGameState();
 		Position* getCurrentPosition();
-		bool isValidMove(move moveToBeMade);
-		bool nextMoveExists();
 
 	//--Actions--
 		bool makeMove(const move moveMade);
+	private:
 			void makeMove_shiftTree(const move moveMade);
-		void debugFunction();
 
+	public:
     //--Debug--
 		void printPositionTree();
 		void printPositionTree(int depth);

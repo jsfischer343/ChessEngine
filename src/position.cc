@@ -238,205 +238,6 @@ Position::Position(const char* FENString)
 	sanityCheck();
 	resolve();
 }
-Position::Position(const Position& lastPosition, const move moveMade)
-{
-	setupMemory();
-	//-DEEPCOPY-
-	//Pieces
-	whitePieces_L = lastPosition.whitePieces_L;
-	blackPieces_L = lastPosition.blackPieces_L;
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		if(lastPosition.whitePieces[i].type=='\0')
-			continue;
-		//White
-		whitePieces[i].type = lastPosition.whitePieces[i].type;
-		whitePieces[i].color = lastPosition.whitePieces[i].color;
-		whitePieces[i].rank = lastPosition.whitePieces[i].rank;
-		whitePieces[i].file = lastPosition.whitePieces[i].file;
-		whitePieces[i].squarePtr = &theBoard[whitePieces[i].rank][whitePieces[i].file];
-		theBoard[whitePieces[i].rank][whitePieces[i].file].piecePtr = &whitePieces[i];
-		//Note: targeters and moves not copied
-	}
-	for(int i=0;i<MAX_PIECES;i++)
-	{
-		if(lastPosition.blackPieces[i].type=='\0')
-			continue;
-		//Black
-		blackPieces[i].type = lastPosition.blackPieces[i].type;
-		blackPieces[i].color = lastPosition.blackPieces[i].color;
-		blackPieces[i].rank = lastPosition.blackPieces[i].rank;
-		blackPieces[i].file = lastPosition.blackPieces[i].file;
-		blackPieces[i].squarePtr = &theBoard[blackPieces[i].rank][blackPieces[i].file];
-		theBoard[blackPieces[i].rank][blackPieces[i].file].piecePtr = &blackPieces[i];
-		//Note: targeters and moves not copied
-	}
-	//
-
-	//Remove extra pawn if last move was en passant
-	if(lastPosition.enPassantRank!=-1)
-	{
-		if(lastPosition.enPassantFile==moveMade.endFile && lastPosition.enPassantRank==moveMade.endRank)
-		{
-			if(moveMade.endRank==2)
-			{
-				removePiece(theBoard[3][moveMade.endFile].piecePtr);
-			}
-			else if(moveMade.endRank==5)
-			{
-				removePiece(theBoard[4][moveMade.endFile].piecePtr);
-			}
-		}
-	}
-
-	//Catch castling move (special case)
-	if(moveMade.startRank==7 && moveMade.startFile==4 &&
-	moveMade.endRank==7 && moveMade.endFile==6 &&
-	moveMade.endPieceType=='k')
-	{
-		castlingConstructor(lastPosition, kingside_white);
-	}
-	else if(moveMade.startRank==7 && moveMade.startFile==4 &&
-	moveMade.endRank==7 && moveMade.endFile==2 &&
-	moveMade.endPieceType=='k')
-	{
-		castlingConstructor(lastPosition, queenside_white);
-	}
-	else if(moveMade.startRank==0 && moveMade.startFile==4 &&
-	moveMade.endRank==0 && moveMade.endFile==6 &&
-	moveMade.endPieceType=='k')
-	{
-		castlingConstructor(lastPosition, kingside_black);
-	}
-	else if(moveMade.startRank==0 && moveMade.startFile==4 &&
-	moveMade.endRank==0 && moveMade.endFile==2 &&
-	moveMade.endPieceType=='k')
-	{
-		castlingConstructor(lastPosition, queenside_black);
-	}
-	//otherwise steps for normal move
-	else
-	{
-		//Castling Flags
-		for(int i=0;i<4;i++)
-		{
-			castlingFlags[i] = lastPosition.castlingFlags[i];
-		}
-		//fiftyMoveRuleCounter
-		if(lastPosition.theBoard[moveMade.startRank][moveMade.startFile].piecePtr->type == 'p')
-		{
-			fiftyMoveRuleCounter = 0;
-		}
-		else if(lastPosition.theBoard[moveMade.endRank][moveMade.endFile].piecePtr!=NULL)
-		{
-			fiftyMoveRuleCounter = 0;
-		}
-		else
-		{
-			fiftyMoveRuleCounter = lastPosition.fiftyMoveRuleCounter+1;
-		}
-
-		//En passant
-		if(moveMade.endPieceType=='p')
-		{
-			if(moveMade.startRank==6 && moveMade.endRank==4)
-			{
-				enPassantRank = 5;
-				enPassantFile = moveMade.startFile;
-			}
-			else if(moveMade.startRank==1 && moveMade.endRank==3)
-			{
-				enPassantRank = 2;
-				enPassantFile = moveMade.startFile;
-			}
-		}
-
-		//Updates based on turn
-		if(lastPosition.colorToMove=='w')
-		{
-			moveCounter = lastPosition.moveCounter+0;
-			colorToMove = 'b';
-		}
-		else
-		{
-			moveCounter = lastPosition.moveCounter+1;
-			colorToMove = 'w';
-		}
-
-		//Make Move: Update the board based on the 'moveMade'
-		piece* pieceBeingMoved = theBoard[moveMade.startRank][moveMade.startFile].piecePtr;
-		char type = moveMade.endPieceType;
-		char color = pieceBeingMoved->color;
-		removePiece(pieceBeingMoved);
-		initPiece(moveMade.endRank,moveMade.endFile,type,color);
-
-		resolve();
-	}
-}
-void Position::castlingConstructor(const Position& lastPosition, const int8_t castlingCode)
-{
-	//Castling Flags
-	for(int i=0;i<4;i++)
-	{
-		castlingFlags[i] = lastPosition.castlingFlags[i];
-	}
-	if(castlingCode == kingside_white || castlingCode == queenside_white)
-	{
-		castlingFlags[kingside_white] = false;
-		castlingFlags[queenside_white] = false;
-	}
-	else if(castlingCode == kingside_black || castlingCode == queenside_black)
-	{
-		castlingFlags[kingside_black] = false;
-		castlingFlags[queenside_black] = false;
-	}
-	//fiftyMoveRuleCounter
-	fiftyMoveRuleCounter = lastPosition.fiftyMoveRuleCounter+1;
-
-
-	//Updates based on turn
-	if(lastPosition.colorToMove=='w')
-	{
-		moveCounter = lastPosition.moveCounter+0;
-		colorToMove = 'b';
-	}
-	else
-	{
-		moveCounter = lastPosition.moveCounter+1;
-		colorToMove = 'w';
-	}
-
-	//Make Move: Update the board based on the 'castlingCode'
-	if(castlingCode == kingside_white)
-	{
-		removePiece(theBoard[7][4].piecePtr);
-		initPiece(7,6,'k','w');
-		removePiece(theBoard[7][7].piecePtr);
-		initPiece(7,5,'r','w');
-	}
-	if(castlingCode == queenside_white)
-	{
-		removePiece(theBoard[7][4].piecePtr);
-		initPiece(7,2,'k','w');
-		removePiece(theBoard[7][0].piecePtr);
-		initPiece(7,3,'r','w');
-	}
-	if(castlingCode == kingside_black)
-	{
-		removePiece(theBoard[0][4].piecePtr);
-		initPiece(0,6,'k','b');
-		removePiece(theBoard[0][7].piecePtr);
-		initPiece(0,5,'r','b');
-	}
-	if(castlingCode == queenside_black)
-	{
-		removePiece(theBoard[0][4].piecePtr);
-		initPiece(0,2,'k','b');
-		removePiece(theBoard[0][0].piecePtr);
-		initPiece(0,3,'r','b');
-	}
-	resolve();
-}
 Position::Position(const Position* lastPosition, const move moveMade)
 {
 	setupMemory();
@@ -489,27 +290,35 @@ Position::Position(const Position* lastPosition, const move moveMade)
 	}
 
 	//Catch castling move (special case)
-	if(moveMade.startRank==7 && moveMade.startFile==4 &&
-	moveMade.endRank==7 && moveMade.endFile==6 &&
-	moveMade.endPieceType=='k')
+	if(moveMade.startRank==7 &&
+	moveMade.startFile==4 &&
+	moveMade.endRank==7 &&
+	moveMade.endFile==6 &&
+	lastPosition->getPieceType(7,4)=='k')
 	{
 		castlingConstructor(lastPosition, kingside_white);
 	}
-	else if(moveMade.startRank==7 && moveMade.startFile==4 &&
-	moveMade.endRank==7 && moveMade.endFile==2 &&
-	moveMade.endPieceType=='k')
+	else if(moveMade.startRank==7 &&
+	moveMade.startFile==4 &&
+	moveMade.endRank==7 &&
+	moveMade.endFile==2 &&
+	lastPosition->getPieceType(7,4)=='k')
 	{
 		castlingConstructor(lastPosition, queenside_white);
 	}
-	else if(moveMade.startRank==0 && moveMade.startFile==4 &&
-	moveMade.endRank==0 && moveMade.endFile==6 &&
-	moveMade.endPieceType=='k')
+	else if(moveMade.startRank==0 &&
+	moveMade.startFile==4 &&
+	moveMade.endRank==0 &&
+	moveMade.endFile==6 &&
+	lastPosition->getPieceType(0,4)=='k')
 	{
 		castlingConstructor(lastPosition, kingside_black);
 	}
-	else if(moveMade.startRank==0 && moveMade.startFile==4 &&
-	moveMade.endRank==0 && moveMade.endFile==2 &&
-	moveMade.endPieceType=='k')
+	else if(moveMade.startRank==0 &&
+	moveMade.startFile==4 &&
+	moveMade.endRank==0 &&
+	moveMade.endFile==2 &&
+	lastPosition->getPieceType(0,4)=='k')
 	{
 		castlingConstructor(lastPosition, queenside_black);
 	}
@@ -522,11 +331,11 @@ Position::Position(const Position* lastPosition, const move moveMade)
 			castlingFlags[i] = lastPosition->castlingFlags[i];
 		}
 		//fiftyMoveRuleCounter
-		if(lastPosition->theBoard[moveMade.startRank][moveMade.startFile].piecePtr->type == 'p')
+		if(lastPosition->getPieceType(moveMade.startRank,moveMade.startFile) == 'p') //pawn moves reset fifty move counter
 		{
 			fiftyMoveRuleCounter = 0;
 		}
-		else if(lastPosition->theBoard[moveMade.endRank][moveMade.endFile].piecePtr!=NULL)
+		else if(lastPosition->getPieceType(moveMade.endRank,moveMade.endFile)!='\0') //captures reset fifty move counter
 		{
 			fiftyMoveRuleCounter = 0;
 		}
@@ -536,7 +345,7 @@ Position::Position(const Position* lastPosition, const move moveMade)
 		}
 
 		//En passant
-		if(moveMade.endPieceType=='p')
+		if(lastPosition->getPieceType(moveMade.startRank,moveMade.startFile)=='p')
 		{
 			if(moveMade.startRank==6 && moveMade.endRank==4)
 			{
@@ -564,7 +373,11 @@ Position::Position(const Position* lastPosition, const move moveMade)
 
 		//Make Move: Update the board based on the 'moveMade'
 		piece* pieceBeingMoved = theBoard[moveMade.startRank][moveMade.startFile].piecePtr;
-		char type = moveMade.endPieceType;
+		char type;
+		if(moveMade.endPieceType!='\0')
+			type = moveMade.endPieceType;
+		else
+			type = lastPosition->getPieceType(moveMade.startRank,moveMade.startFile);
 		char color = pieceBeingMoved->color;
 		removePiece(pieceBeingMoved);
 		initPiece(moveMade.endRank,moveMade.endFile,type,color);
@@ -641,7 +454,7 @@ Position::~Position()
 }
 
 //-Get-
-int Position::getTotalMoves()
+int Position::getTotalMoves() const
 {
 	int totalMoves = 0;
 	if(colorToMove=='w')
@@ -682,7 +495,7 @@ int Position::getTotalMoves()
 	}
 	return totalMoves;
 }
-move* Position::getAllMoves()
+move* Position::getAllMoves() const
 {
 	int totalMoves = getTotalMoves();
 	int remainingMoves = totalMoves;
@@ -695,7 +508,7 @@ move* Position::getAllMoves()
 				continue;
 			for(int j=0;j<whitePieces[i].moves_L;j++)
 			{
-				if(whitePieces[i].type=='p' && whitePieces[i].moves[j]->rank == 0)
+				if(whitePieces[i].type=='p' && whitePieces[i].moves[j]->rank == 0) //in the case that a white pawn is about to promote 4 different types of moves need to be pushed
 				{
 					allMovesArr[totalMoves-remainingMoves].startRank = whitePieces[i].rank;
 					allMovesArr[totalMoves-remainingMoves].startFile = whitePieces[i].file;
@@ -728,7 +541,7 @@ move* Position::getAllMoves()
 					allMovesArr[totalMoves-remainingMoves].startFile = whitePieces[i].file;
 					allMovesArr[totalMoves-remainingMoves].endRank = whitePieces[i].moves[j]->rank;
 					allMovesArr[totalMoves-remainingMoves].endFile = whitePieces[i].moves[j]->file;
-					allMovesArr[totalMoves-remainingMoves].endPieceType = whitePieces[i].type;
+					allMovesArr[totalMoves-remainingMoves].endPieceType = '\0';
 					remainingMoves--;
 				}
 			}
@@ -739,7 +552,7 @@ move* Position::getAllMoves()
 			allMovesArr[totalMoves-remainingMoves].startFile = 4;
 			allMovesArr[totalMoves-remainingMoves].endRank = 7;
 			allMovesArr[totalMoves-remainingMoves].endFile = 6;
-			allMovesArr[totalMoves-remainingMoves].endPieceType = 'k';
+			allMovesArr[totalMoves-remainingMoves].endPieceType = '\0';
 			remainingMoves--;
 		}
 		if(canCastle[queenside_white])
@@ -748,7 +561,7 @@ move* Position::getAllMoves()
 			allMovesArr[totalMoves-remainingMoves].startFile = 4;
 			allMovesArr[totalMoves-remainingMoves].endRank = 7;
 			allMovesArr[totalMoves-remainingMoves].endFile = 2;
-			allMovesArr[totalMoves-remainingMoves].endPieceType = 'k';
+			allMovesArr[totalMoves-remainingMoves].endPieceType = '\0';
 			remainingMoves--;
 		}
 	}
@@ -793,7 +606,7 @@ move* Position::getAllMoves()
 					allMovesArr[totalMoves-remainingMoves].startFile = blackPieces[i].file;
 					allMovesArr[totalMoves-remainingMoves].endRank = blackPieces[i].moves[j]->rank;
 					allMovesArr[totalMoves-remainingMoves].endFile = blackPieces[i].moves[j]->file;
-					allMovesArr[totalMoves-remainingMoves].endPieceType = blackPieces[i].type;
+					allMovesArr[totalMoves-remainingMoves].endPieceType = '\0';
 					remainingMoves--;
 				}
 			}
@@ -804,7 +617,7 @@ move* Position::getAllMoves()
 			allMovesArr[totalMoves-remainingMoves].startFile = 4;
 			allMovesArr[totalMoves-remainingMoves].endRank = 0;
 			allMovesArr[totalMoves-remainingMoves].endFile = 6;
-			allMovesArr[totalMoves-remainingMoves].endPieceType = 'k';
+			allMovesArr[totalMoves-remainingMoves].endPieceType = '\0';
 			remainingMoves--;
 		}
 		if(canCastle[queenside_black])
@@ -813,13 +626,13 @@ move* Position::getAllMoves()
 			allMovesArr[totalMoves-remainingMoves].startFile = 4;
 			allMovesArr[totalMoves-remainingMoves].endRank = 0;
 			allMovesArr[totalMoves-remainingMoves].endFile = 2;
-			allMovesArr[totalMoves-remainingMoves].endPieceType = 'k';
+			allMovesArr[totalMoves-remainingMoves].endPieceType = '\0';
 			remainingMoves--;
 		}
 	}
 	return allMovesArr;
 }
-char* Position::getNotation(const move& moveInQuestion)
+char* Position::getNotation(const move& moveInQuestion) const
 {
 	size_t buffer_L = 10;
 	char* buffer = new char[buffer_L];
@@ -850,7 +663,7 @@ char* Position::getNotation(const move& moveInQuestion)
 	char checkOrCheckmate;
 
 	//Castling
-	if(moveInQuestion.startRank==7 && moveInQuestion.startFile==4 && moveInQuestion.endRank==7 && moveInQuestion.endFile==6 && moveInQuestion.endPieceType=='k')
+	if(moveInQuestion.startRank==7 && moveInQuestion.startFile==4 && moveInQuestion.endRank==7 && moveInQuestion.endFile==6 && getPieceType(7,4)=='k')
 	{
 		//kingside_white
 		buffer[0] = 'O';
@@ -859,7 +672,7 @@ char* Position::getNotation(const move& moveInQuestion)
 		buffer[3] = ' ';
 		return buffer;
 	}
-	else if(moveInQuestion.startRank==7 && moveInQuestion.startFile==4 && moveInQuestion.endRank==7 && moveInQuestion.endFile==2 && moveInQuestion.endPieceType=='k')
+	else if(moveInQuestion.startRank==7 && moveInQuestion.startFile==4 && moveInQuestion.endRank==7 && moveInQuestion.endFile==2 && getPieceType(7,4)=='k')
 	{
 		//queenside_white
 		buffer[0] = 'O';
@@ -869,7 +682,7 @@ char* Position::getNotation(const move& moveInQuestion)
 		buffer[4] = 'O';
 		return buffer;
 	}
-	else if(moveInQuestion.startRank==0 && moveInQuestion.startFile==4 && moveInQuestion.endRank==0 && moveInQuestion.endFile==6 && moveInQuestion.endPieceType=='k')
+	else if(moveInQuestion.startRank==0 && moveInQuestion.startFile==4 && moveInQuestion.endRank==0 && moveInQuestion.endFile==6 && getPieceType(0,4)=='k')
 	{
 		//kingside_black
 		buffer[0] = 'O';
@@ -878,7 +691,7 @@ char* Position::getNotation(const move& moveInQuestion)
 		buffer[3] = ' ';
 		return buffer;
 	}
-	else if(moveInQuestion.startRank==0 && moveInQuestion.startFile==4 && moveInQuestion.endRank==0 && moveInQuestion.endFile==2 && moveInQuestion.endPieceType=='k')
+	else if(moveInQuestion.startRank==0 && moveInQuestion.startFile==4 && moveInQuestion.endRank==0 && moveInQuestion.endFile==2 && getPieceType(0,4)=='k')
 	{
 		//queenside_black
 		buffer[0] = 'O';
@@ -891,9 +704,9 @@ char* Position::getNotation(const move& moveInQuestion)
 	//
 	else
 	{
-		if(theBoard[moveInQuestion.startRank][moveInQuestion.startFile].piecePtr->color=='w')
+		if(getPieceColor(moveInQuestion.startRank,moveInQuestion.startFile)=='w')
 		{
-			pieceType = theBoard[moveInQuestion.startRank][moveInQuestion.startFile].piecePtr->type;
+			pieceType = getPieceType(moveInQuestion.startRank,moveInQuestion.startFile);
 			//
 			for(int i=0;i<MAX_PIECES;i++)
 			{
@@ -1000,7 +813,7 @@ char* Position::getNotation(const move& moveInQuestion)
 		}
 		else
 		{
-			pieceType = theBoard[moveInQuestion.startRank][moveInQuestion.startFile].piecePtr->type;
+			pieceType = getPieceType(moveInQuestion.startRank,moveInQuestion.startFile);
 			//
 			for(int i=0;i<MAX_PIECES;i++)
 			{
@@ -1107,7 +920,7 @@ char* Position::getNotation(const move& moveInQuestion)
 	}
 	return buffer;
 }
-move Position::getMoveFromNotation(const char* notation)
+move Position::getMoveFromNotation(const char* notation) const
 {
 	move returnMove = move();
 	//Castling
@@ -1120,7 +933,7 @@ move Position::getMoveFromNotation(const char* notation)
 		returnMove.startFile = 4;
 		returnMove.endRank = 7;
 		returnMove.endFile = 6;
-		returnMove.endPieceType = 'k';
+		returnMove.endPieceType = '\0';
 		return returnMove;
 	}
 	if(notation[0]=='O' &&
@@ -1134,7 +947,7 @@ move Position::getMoveFromNotation(const char* notation)
 		returnMove.startFile = 4;
 		returnMove.endRank = 7;
 		returnMove.endFile = 2;
-		returnMove.endPieceType = 'k';
+		returnMove.endPieceType = '\0';
 		return returnMove;
 	}
 	if(notation[0]=='O' &&
@@ -1146,7 +959,7 @@ move Position::getMoveFromNotation(const char* notation)
 		returnMove.startFile = 4;
 		returnMove.endRank = 0;
 		returnMove.endFile = 6;
-		returnMove.endPieceType = 'k';
+		returnMove.endPieceType = '\0';
 		return returnMove;
 	}
 	if(notation[0]=='O' &&
@@ -1160,11 +973,12 @@ move Position::getMoveFromNotation(const char* notation)
 		returnMove.startFile = 4;
 		returnMove.endRank = 0;
 		returnMove.endFile = 2;
-		returnMove.endPieceType = 'k';
+		returnMove.endPieceType = '\0';
 		return returnMove;
 	}
 
 	char pieceType = (char)std::tolower(notation[0]);
+	char promotionType = '\0';
 	int8_t startRank = -1;
 	int8_t startFile = -1;
 	int8_t endRank = -1;
@@ -1192,7 +1006,7 @@ move Position::getMoveFromNotation(const char* notation)
 			//promotion
 			if(notation[3]=='=')
 			{
-				pieceType = (char)std::tolower(notation[4]);
+				promotionType = (char)std::tolower(notation[4]);
 			}
 		}
 		else if(isFileOrRank(notation[3]) &&
@@ -1235,7 +1049,7 @@ move Position::getMoveFromNotation(const char* notation)
 			//promotion
 			if(notation[4]=='=')
 			{
-				pieceType = (char)std::tolower(notation[5]);
+				promotionType = (char)std::tolower(notation[5]);
 			}
 		}
 		else if(isFileOrRank(notation[3]) &&
@@ -1249,7 +1063,7 @@ move Position::getMoveFromNotation(const char* notation)
 			//promotion
 			if(notation[5]=='=')
 			{
-				pieceType = (char)std::tolower(notation[6]);
+				promotionType = (char)std::tolower(notation[6]);
 			}
 		}
 		else if(notation[3]=='x' &&
@@ -1264,7 +1078,7 @@ move Position::getMoveFromNotation(const char* notation)
 			//promotion
 			if(notation[6]=='=')
 			{
-				pieceType = (char)std::tolower(notation[7]);
+				promotionType = (char)std::tolower(notation[7]);
 			}
 		}
 	}
@@ -1288,7 +1102,7 @@ move Position::getMoveFromNotation(const char* notation)
 		//promotion
 		if(notation[4]=='=')
 		{
-			pieceType = (char)std::tolower(notation[5]);
+			promotionType = (char)std::tolower(notation[5]);
 		}
 	}
 	else if(isFileOrRank(notation[1]) &&
@@ -1333,7 +1147,7 @@ move Position::getMoveFromNotation(const char* notation)
 		//promotion
 		if(notation[5]=='=')
 		{
-			pieceType = (char)std::tolower(notation[6]);
+			promotionType = (char)std::tolower(notation[6]);
 		}
 	}
 
@@ -1345,10 +1159,10 @@ move Position::getMoveFromNotation(const char* notation)
 	returnMove.startFile = startFile;
 	returnMove.endRank = endRank;
 	returnMove.endFile = endFile;
-	returnMove.endPieceType = pieceType;
+	returnMove.endPieceType = promotionType;
 	return returnMove;
 }
-int Position::getTotalTargeters(square* squarePtr, char color)
+int Position::getTotalTargeters(square* squarePtr, char color) const
 {
 	int total = 0;
 	for(int i=0;i<squarePtr->targeters_L;i++)
@@ -1358,7 +1172,7 @@ int Position::getTotalTargeters(square* squarePtr, char color)
 	}
 	return total;
 }
-int Position::getTotalMovers(square* squarePtr, char color)
+int Position::getTotalMovers(square* squarePtr, char color) const
 {
 	int total = 0;
 	for(int i=0;i<squarePtr->moves_L;i++)
@@ -1368,7 +1182,7 @@ int Position::getTotalMovers(square* squarePtr, char color)
 	}
 	return total;
 }
-char Position::getPieceColor(square* squarePtr)
+char Position::getPieceColor(square* squarePtr) const
 {
 	if(squarePtr->piecePtr==NULL)
 	{
@@ -1379,7 +1193,42 @@ char Position::getPieceColor(square* squarePtr)
 		return squarePtr->piecePtr->color;
 	}
 }
-Position::piece* Position::getKingPtr(char color)
+char Position::getPieceColor(int8_t rank, int8_t file) const
+{
+	square* squarePtr = &theBoard[rank][file];
+	if(squarePtr->piecePtr==NULL)
+	{
+		return '\0';
+	}
+	else
+	{
+		return squarePtr->piecePtr->color;
+	}
+}
+char Position::getPieceType(square* squarePtr) const
+{
+	if(squarePtr->piecePtr==NULL)
+	{
+		return '\0';
+	}
+	else
+	{
+		return squarePtr->piecePtr->type;
+	}
+}
+char Position::getPieceType(int8_t rank, int8_t file) const
+{
+	square* squarePtr = &theBoard[rank][file];
+	if(squarePtr->piecePtr==NULL)
+	{
+		return '\0';
+	}
+	else
+	{
+		return squarePtr->piecePtr->type;
+	}
+}
+Position::piece* Position::getKingPtr(char color) const
 {
 	if(color=='w')
 	{
@@ -1399,7 +1248,7 @@ Position::piece* Position::getKingPtr(char color)
 	}
 	return NULL;
 }
-float Position::getInstantEval()
+float Position::getInstantEval() const
 {
 	if(positionState==positionstate_draw50||positionState==positionstate_drawStalemate||positionState==positionstate_drawInsufficientMaterial)
 		return 0;

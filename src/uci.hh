@@ -45,12 +45,15 @@ class UCI
         typedef struct ucigoparams ucigoparams;
 
         //DATA
-        std::vector<std::string> commandTokens;
+        std::vector<std::string> inputTokens;
+        PositionTree* uciPositionTree = NULL;
+        std::string lastStartingFEN = ""; //the last starting FEN used by the position command (if this and the moves are similar then it saves time having to setup a new uciPositionTree)
+        std::vector<std::string> previousMoves;
+        //states & flags
         ucistates uciStates;
         ucioptions uciOptions;
         ucigoparams uciGoParams;
-        PositionTree* uciPositionTree = NULL;
-
+        //synchronization
         std::thread* goThread = NULL;
         std::chrono::time_point<std::chrono::steady_clock> goThread_startTime;
 
@@ -69,9 +72,11 @@ class UCI
         void in_register();
         void in_ucinewgame();
         void in_position();
-            void in_position_makeMoves(int startingCommandTokenIndex);
+            bool in_position_validateMoveVectorAgainstPreviousMoves(std::vector<std::string> moveVector);
+            void in_position_updatePreviousMoveVector(std::vector<std::string> moveVector);
+            void in_position_makeMoves(int startingTokenIndex);
         void in_go();
-            void in_go_parse();
+            bool in_go_parse();
             void in_go_searchThread();
                 bool in_go_searchThread_shouldStop();
             bool in_go_isGoCommand(std::string command);
@@ -83,8 +88,8 @@ class UCI
         void out_uciok();
         void out_readyok();
         void out_bestmove(move bestMove);
-        // void out_copyprotection();
-        // void out_registration();
+        // void out_copyprotection(); //not used
+        // void out_registration(); //not used
         void out_info();
         void out_sendOptions();
 
@@ -93,6 +98,7 @@ class UCI
         std::string move_TO_uciNotation(move engineMove);
         void setupPositionTree();
         void setupPositionTree(std::string fenString);
+
 };
 
 #endif

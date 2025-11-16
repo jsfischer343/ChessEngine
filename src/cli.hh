@@ -6,7 +6,6 @@
 #include <ctime>
 #include "global.hh"
 #include "uci.hh"
-#include "game.hh"
 
 #define MAX_COMMAND_TOKENS 200
 
@@ -15,7 +14,7 @@ class CLI
     private:
         bool usingUCI = false;
         UCI* bluespiralUCI;
-        std::vector<std::string> commandTokens;
+        std::vector<std::string> inputTokens;
 
     public:
         CLI();
@@ -24,13 +23,9 @@ class CLI
 
     private:
         void command_uci();
-        void command_botvsbot();
-        void command_humanvsbot();
-        void command_humanvshuman();
         void command_help();
 
         void printHelp();
-        void printHelp(std::string command);
 };
 
 #endif

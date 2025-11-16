@@ -4,7 +4,6 @@
 #include "global.hh"
 #include "position.hh"
 #include "positiontree.hh"
-#include "game.hh"
 #include "uci.hh"
 #include "cli.hh"
 
@@ -28,12 +27,10 @@ int main()
 	auto startTime = std::chrono::high_resolution_clock::now();
 
 	// //debug
-	// Position* debugPosition = new Position("rnbqkbnr/ppp3pp/3p1p2/4p3/P1PP4/7P/1P2PPP1/RNBQKBNR b KQkq a3 0 4");
-	// PositionTree* debugPositionTree = new PositionTree(debugPosition,4);
-	// debugPositionTree->expandXNextBestBranches(5000);
-	// debugPositionTree->printPositionTree(2);
+	// PositionTree* debugPositionTree = new PositionTree(new Position("1rb1kbnr/pppp1ppp/1qn5/3P4/8/2P2N2/PP2BPPP/RNBQK2R w KQk - 1 8"),4);
+	// //debugPositionTree->expandXNextBestBranches(500);
+	// debugPositionTree->printPositionTree(1);
 	// delete debugPositionTree;
-	// delete debugPosition;
 
 	printWelcomeText();
 	std::string userInput;

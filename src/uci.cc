@@ -10,6 +10,7 @@ UCI::UCI()
 }
 UCI::~UCI()
 {
+    uciStates.stop = true; //signal thread to stop
     if(goThread!=NULL)
     {
         if(goThread->joinable())
@@ -72,122 +73,81 @@ bool UCI::parseCommand_validCommand(std::string command)
     }
     return false;
 }
-
 void UCI::parseCommand(std::string userInput)
 {
-    commandTokens.clear(); //reset commandTokens from last command
-
-    int tokenStart = 0;
-    int tokenEnd = 0;
-    std::string command;
-    while(true)
+    if(userInput=="exit"||userInput=="quit")
     {
-        //find start of command token
-        if(userInput[0]=='\0')
-        {
-            return;
-        }
-        tokenStart=0;
-        while(userInput[tokenStart]==' '||userInput[tokenStart]=='\t')
-        {
-            if(userInput[tokenStart]=='\0')
-            {
-                return;
-            }
-            tokenStart++;
-        }
-
-        //find end of command token
-        tokenEnd=tokenStart;
-        do {
-            tokenEnd++;
-        } while(userInput[tokenEnd]!=' '&&userInput[tokenEnd]!='\t'&&userInput[tokenEnd]!='\0'&&tokenEnd<userInput.length());
-
-        //save command
-        command = userInput.substr(tokenStart,tokenEnd-tokenStart);
-        userInput.erase(0,tokenEnd);
-        if(parseCommand_validCommand(command))
-        {
-            break;
-        }
-    }
-
-    //save commandTokens (i.g. arguments)
-    bool dontPushToken = false;
-    bool moreTokens = true;
-    while(moreTokens&&commandTokens.size()<=MAX_COMMAND_TOKENS)
-    {
-        if(userInput[0]=='\0')
-        {
-            break;
-        }
-        tokenStart=0;
-        while(userInput[tokenStart]==' '||userInput[tokenStart]=='\t')
-        {
-            if(userInput[tokenStart]=='\0')
-            {
-                moreTokens = false;
-                dontPushToken = true;
-                break;
-            }
-            tokenStart++;
-        }
-
-        //find end of command token
-        tokenEnd=tokenStart;
-        do {
-            if(userInput[tokenEnd]=='\0')
-            {
-                moreTokens = false;
-                break;
-            }
-            tokenEnd++;
-        } while(userInput[tokenEnd]!=' '&&userInput[tokenEnd]!='\t');
-        if(!dontPushToken)
-        {
-            commandTokens.push_back(userInput.substr(tokenStart,tokenEnd-tokenStart));
-            userInput.erase(0,tokenEnd);
-        }
-    }
-    if(commandTokens.size()>=MAX_COMMAND_TOKENS)
-    {
-        std::cerr << "error138: max allowed commandTokens exceeded" << std::endl;
+        uciStates.stop = true;
         return;
     }
+    inputTokens.clear(); //reset inputTokens from last command
 
-    if(command=="debug")
+    bool moreTokens = true;
+    while(moreTokens)
+	{
+		int tokenStart=0;
+		while(userInput[tokenStart]==' '||userInput[tokenStart]=='\t')
+		{
+			tokenStart++;
+		}
+		int tokenEnd=tokenStart;
+		do {
+			tokenEnd++;
+			if(userInput[tokenEnd]=='\0')
+			{
+				moreTokens = false;
+			}
+		} while(userInput[tokenEnd]!=' '&&userInput[tokenEnd]!='\t'&&userInput[tokenEnd]!='\0');
+		inputTokens.push_back(userInput.substr(tokenStart,tokenEnd-tokenStart));
+		userInput.erase(0,tokenEnd);
+	}
+	while(true) //while inputTokens.at(0) is not a recongizable command delete it
+    {
+        if(inputTokens.size()==0)
+        {
+            std::cerr << "error180: command not recognized" << std::endl;
+            return;
+        }
+        if(parseCommand_validCommand(inputTokens.at(0)))
+        {
+            break;
+        }
+        inputTokens.erase(inputTokens.begin());
+    }
+
+    if(inputTokens.at(0)=="debug")
     {
         in_debug();
     }
-    else if(command=="isready")
+    else if(inputTokens.at(0)=="isready")
     {
         in_isready();
     }
-    else if(command=="setoption")
+    else if(inputTokens.at(0)=="setoption")
     {
         in_setoption();
     }
-    else if(command=="register")
+    else if(inputTokens.at(0)=="register")
     {
         in_register();
     }
-    else if(command=="ucinewgame")
+    else if(inputTokens.at(0)=="ucinewgame")
     {
         in_ucinewgame();
     }
-    else if(command=="position")
+    else if(inputTokens.at(0)=="position")
     {
         in_position();
     }
-    else if(command=="go")
+    else if(inputTokens.at(0)=="go")
     {
         in_go();
     }
-    else if(command=="stop")
+    else if(inputTokens.at(0)=="stop")
     {
         in_stop();
     }
-    else if(command=="ponderhit")
+    else if(inputTokens.at(0)=="ponderhit")
     {
         in_ponderhit();
     }
@@ -200,85 +160,95 @@ void UCI::parseCommand(std::string userInput)
 //UCI commands
 void UCI::in_debug()
 {
-    if(commandTokens.size()==1)
+    if(inputTokens.size()==2)
     {
-        if(commandTokens.at(0)=="on")
+        if(inputTokens.at(1)=="on")
         {
             uciStates.debug = true;
         }
-        else if(commandTokens.at(0)=="off")
+        else if(inputTokens.at(1)=="off")
         {
             uciStates.debug = false;
+        }
+        else
+        {
+            std::cerr << "error169: invalid debug option" << std::endl;
         }
     }
 }
 void UCI::in_isready()
 {
-    if(uciStates.isready)
-    {
-        std::cout << "readyok" << std::endl;
-    }
+    while(uciStates.isready==false);
+    out_readyok();
 }
 void UCI::in_setoption()
 {
-    if(commandTokens.size()==0)
+    if(uciStates.isready==true)
     {
-        std::cerr << "error214: no arguments provided" << std::endl;
-        return;
-    }
-    std::string optionName = "";
-    std::string optionValue = "";
-    if(commandTokens.at(0)!="name")
-    {
-        std::cerr << "error195: setoption 'name' signifier not found" << std::endl;
-        return;
-    }
-    int i=1;
-    while(i<commandTokens.size())
-    {
-        if(commandTokens.at(i)=="value")
+        if(inputTokens.size()==1)
         {
-            break;
+            std::cerr << "error214: no arguments provided" << std::endl;
+            return;
         }
-        for(int j=0;j<commandTokens.at(i).size();j++)
+        if(inputTokens.at(1)!="name")
         {
-            commandTokens.at(i).at(j) = std::tolower(commandTokens.at(i).at(j));
+            std::cerr << "error195: setoption 'name' signifier not found" << std::endl;
+            return;
         }
-        i++;
-    }
-    for(int j=1;j<i;j++)
-    {
-        optionName += commandTokens.at(1);
-    }
-    if(optionName=="")
-    {
-        std::cerr << "error243: setoption no option name provided" << std::endl;
-        return;
-    }
-    if(i>=commandTokens.size())
-    {
-        std::cerr << "error208: setoption 'value' signifier not found" << std::endl;
-        return;
-    }
-    else if((i+1)==commandTokens.size())
-    {
-        std::cerr << "error212: setoption no value after 'value' was given" << std::endl;
-        return;
-    }
-    else if((i+2)<commandTokens.size())
-    {
-        std::cerr << "error216: setoption has to many values given after 'value'" << std::endl;
-        return;
+
+        std::string optionName = "";
+        std::string optionValue = "";
+        int i=2;
+        while(i<inputTokens.size())
+        {
+            if(inputTokens.at(i)=="value")
+            {
+                break;
+            }
+            for(int j=0;j<inputTokens.at(i).size();j++)
+            {
+                inputTokens.at(i).at(j) = std::tolower(inputTokens.at(i).at(j));
+            }
+            i++;
+        }
+        for(int j=2;j<i;j++)
+        {
+            optionName += inputTokens.at(j);
+        }
+        if(optionName=="")
+        {
+            std::cerr << "error243: setoption no option name provided" << std::endl;
+            return;
+        }
+        if(i>=inputTokens.size())
+        {
+            std::cerr << "error208: setoption 'value' signifier not found" << std::endl;
+            return;
+        }
+        else if((i+1)>inputTokens.size())
+        {
+            std::cerr << "error212: setoption no value after 'value' was given" << std::endl;
+            return;
+        }
+        else if((i+2)<inputTokens.size())
+        {
+            std::cerr << "error216: setoption has to many values given after 'value'" << std::endl;
+            return;
+        }
+        else
+        {
+            optionValue = inputTokens.at(i+1);
+        }
+
+        //Options
+        if(optionName=="dummy")
+        {
+            uciOptions.dummy = optionValue;
+        }
     }
     else
     {
-        optionValue = commandTokens.at(i+1);
-    }
-
-    //Options
-    if(optionName=="dummy")
-    {
-        uciOptions.dummy = optionValue;
+        std::cerr << "error288: engine is not ready" << std::endl;
     }
 }
 void UCI::in_register()
@@ -288,93 +258,164 @@ void UCI::in_register()
 }
 void UCI::in_ucinewgame()
 {
-    uciGoParams = ucigoparams();
-    if(uciPositionTree!=NULL)
+    if(uciStates.isready==true)
     {
-        delete uciPositionTree;
+        if(uciPositionTree!=NULL)
+        {
+            delete uciPositionTree;
+        }
     }
 }
-void UCI::in_position_makeMoves(int startingCommandTokenIndex)
+bool UCI::in_position_validateMoveVectorAgainstPreviousMoves(std::vector<std::string> moveVector)
 {
-    if(commandTokens.at(startingCommandTokenIndex)!="moves")
+    if(moveVector.size()<previousMoves.size())
     {
-        std::cerr << "error279: position command 'moves' signifier missing" << std::endl;
-        return;
+        return false;
     }
-    else
+    for(int i=0;i<previousMoves.size();i++)
     {
-        for(int i=startingCommandTokenIndex+1;i<commandTokens.size();i++)
+        if(moveVector.at(i)!=previousMoves.at(i))
         {
-            if(!(uciPositionTree->makeMove(uciNotation_TO_move(commandTokens.at(i)))))
-            {
-                std::cerr << "error287: invalid move was processed" << std::endl;
-            }
-            else
-            {
-                uciPositionTree->expandFromRoot(2);
-            }
+            return false;
+        }
+    }
+    return true;
+}
+void UCI::in_position_updatePreviousMoveVector(std::vector<std::string> moveVector)
+{
+    for(int i=previousMoves.size();i<moveVector.size();i++)
+    {
+        previousMoves.push_back(moveVector.at(i));
+    }
+}
+void UCI::in_position_makeMoves(int startingTokenIndex)
+{
+    for(int i=startingTokenIndex;i<inputTokens.size();i++)
+    {
+        if(!(uciPositionTree->makeMove(uciNotation_TO_move(inputTokens.at(i)))))
+        {
+            std::cerr << "error287: invalid move was processed" << std::endl;
         }
     }
 }
 void UCI::in_position()
 {
-    if(commandTokens.size()==0)
+    if(uciStates.isready==true)
     {
-        return;
-    }
-    if(commandTokens.at(0)=="fen")
-    {
-        if(commandTokens.size()<7)
+        if(inputTokens.size()==1)
         {
-            std::cerr << "error313: insufficient arguments to create fen string" << std::endl;
+            std::cerr << "error279: no starting position provided -> [startpos | <fenstring>]" << std::endl;
             return;
         }
-        std::string fenString = "";
-        std::regex fenRegex("(([12345678prnbqkPRNBQK]{1,8}/){7}[12345678prnbqkPRNBQK]{1,8}) [wb] ((K{0,1}Q{0,1}k{0,1}q{0,1})|-) (([a-h]{1}[1-8]{1})|-) [0-9]{1,4} [0-9]{1,4}");
-        fenString += commandTokens.at(1); //board
-        fenString += " ";
-        fenString += commandTokens.at(2); //color to move
-        fenString += " ";
-        fenString += commandTokens.at(3); //castling
-        fenString += " ";
-        fenString += commandTokens.at(4); //en passant
-        fenString += " ";
-        fenString += commandTokens.at(5); //50 move counter
-        fenString += " ";
-        fenString += commandTokens.at(6); //move counter
-        if(!(std::regex_match(fenString,fenRegex)))
+        if(inputTokens.at(1)=="fen")
         {
-            std::cerr << "error277: invalid fen string" << std::endl;
-            return;
+            if(inputTokens.size()<8)
+            {
+                std::cerr << "error313: malformed position command" << std::endl;
+                return;
+            }
+            std::string fenString = "";
+            std::regex fenRegex("(([12345678prnbqkPRNBQK]{1,8}/){7}[12345678prnbqkPRNBQK]{1,8}) [wb] ((K{0,1}Q{0,1}k{0,1}q{0,1})|-) (([a-h]{1}[1-8]{1})|-) [0-9]{1,4} [0-9]{1,4}");
+            fenString += inputTokens.at(2); //board
+            fenString += " ";
+            fenString += inputTokens.at(3); //color to move
+            fenString += " ";
+            fenString += inputTokens.at(4); //castling
+            fenString += " ";
+            fenString += inputTokens.at(5); //en passant
+            fenString += " ";
+            fenString += inputTokens.at(6); //50 move counter
+            fenString += " ";
+            fenString += inputTokens.at(7); //move counter
+            if(!(std::regex_match(fenString,fenRegex)))
+            {
+                std::cerr << "error277: invalid fen string" << std::endl;
+                return;
+            }
+            if(inputTokens.size()<9) //implies that no moves were provided
+            {
+                setupPositionTree(fenString);
+            }
+            else
+            {
+                if(inputTokens.at(8)!="moves")
+                {
+                    std::cerr << "error279: position command 'moves' signifier missing or malformed" << std::endl;
+                    return;
+                }
+                if(uciPositionTree==NULL || fenString!=lastStartingFEN)
+                {
+                    setupPositionTree(fenString);
+                    in_position_makeMoves(9);
+                }
+                else
+                {
+                    std::vector<std::string> providedMoveVector;
+                    for(int i=9;i<inputTokens.size();i++)
+                    {
+                        providedMoveVector.push_back(inputTokens.at(i));
+                    }
+                    if(!in_position_validateMoveVectorAgainstPreviousMoves(providedMoveVector))
+                    {
+                        setupPositionTree(fenString);
+                        in_position_makeMoves(9);
+                    }
+                    else
+                    {
+                        in_position_makeMoves(previousMoves.size()+9);
+                        in_position_updatePreviousMoveVector(providedMoveVector);
+                    }
+                }
+            }
+            lastStartingFEN = fenString;
+        }
+        else if(inputTokens.at(1)=="startpos")
+        {
+            if(inputTokens.size()==2) //implies that no moves were provided
+            {
+                setupPositionTree();
+            }
+            else
+            {
+                if(inputTokens.at(2)!="moves")
+                {
+                    std::cerr << "error279: position command 'moves' signifier missing or malformed" << std::endl;
+                    return;
+                }
+                if(uciPositionTree==NULL || lastStartingFEN!="startpos")
+                {
+                    setupPositionTree();
+                    in_position_makeMoves(3);
+                }
+                else
+                {
+                    std::vector<std::string> providedMoveVector;
+                    for(int i=3;i<inputTokens.size();i++)
+                    {
+                        providedMoveVector.push_back(inputTokens.at(i));
+                    }
+                    if(!in_position_validateMoveVectorAgainstPreviousMoves(providedMoveVector))
+                    {
+                        setupPositionTree();
+                        in_position_makeMoves(3);
+                    }
+                    else
+                    {
+                        in_position_makeMoves(previousMoves.size()+3);
+                        in_position_updatePreviousMoveVector(providedMoveVector);
+                    }
+                }
+            }
+            lastStartingFEN = "startpos";
         }
         else
         {
-            setupPositionTree(fenString);
-        }
-        if(commandTokens.size()<8)
-        {
-            return; //implies that no moves were provided
-        }
-        else
-        {
-            in_position_makeMoves(7);
-        }
-    }
-    else if(commandTokens.at(0)=="startpos")
-    {
-        setupPositionTree();
-        if(commandTokens.size()==1)
-        {
-            return; //implies that no moves were provided
-        }
-        else
-        {
-            in_position_makeMoves(1);
+            std::cerr << "error387: no starting position was provided" << std::endl;
         }
     }
     else
     {
-        in_position_makeMoves(0);
+        std::cerr << "error288: engine is not ready" << std::endl;
     }
 }
 bool UCI::in_go_isGoCommand(std::string command)
@@ -429,12 +470,8 @@ bool UCI::in_go_isGoCommand(std::string command)
     }
     return false;
 }
-void UCI::in_go_parse()
+bool UCI::in_go_parse()
 {
-    if(uciPositionTree==NULL)
-    {
-        std::cerr << "error424: position hasn't been initialized" << std::endl;
-    }
     int searchMovesIndex = -1;
     int ponderIndex = -1;
     int wTimeIndex = -1;
@@ -447,134 +484,146 @@ void UCI::in_go_parse()
     int mateIndex = -1;
     int moveTimeIndex = -1;
     int infiniteIndex = -1;
-    for(int i=0;i<commandTokens.size();i++) //look to see if each of the sub commands are present or not
+    for(int i=1;i<inputTokens.size();i++) //look to see if each of the sub commands are present or not
     {
-        if(commandTokens.at(i)=="searchmoves")
+        if(inputTokens.at(i)=="searchmoves")
         {
             if(searchMovesIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 searchMovesIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="ponder")
+        else if(inputTokens.at(i)=="ponder")
         {
             if(ponderIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 ponderIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="wtime")
+        else if(inputTokens.at(i)=="wtime")
         {
             if(wTimeIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 wTimeIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="btime")
+        else if(inputTokens.at(i)=="btime")
         {
             if(bTimeIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 bTimeIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="winc")
+        else if(inputTokens.at(i)=="winc")
         {
             if(wIncIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 wIncIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="binc")
+        else if(inputTokens.at(i)=="binc")
         {
             if(bIncIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 bIncIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="movestogo")
+        else if(inputTokens.at(i)=="movestogo")
         {
             if(movesToGoIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 movesToGoIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="depth")
+        else if(inputTokens.at(i)=="depth")
         {
             if(depthIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 depthIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="nodes")
+        else if(inputTokens.at(i)=="nodes")
         {
             if(nodesIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 nodesIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="mate")
+        else if(inputTokens.at(i)=="mate")
         {
             if(mateIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 mateIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="movetime")
+        else if(inputTokens.at(i)=="movetime")
         {
             if(moveTimeIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
                 moveTimeIndex = i;
             }
         }
-        else if(commandTokens.at(i)=="infinite")
+        else if(inputTokens.at(i)=="infinite")
         {
             if(infiniteIndex!=-1)
             {
                 std::cerr << "error354: this command already is mentioned in go command" << std::endl;
+                return false;
             }
             else
             {
@@ -587,23 +636,21 @@ void UCI::in_go_parse()
     if(searchMovesIndex!=-1)
     {
         int i=1;
-        while(searchMovesIndex+i<commandTokens.size())
+        std::regex uciMoveRegexPattern("[abcdefgh][1-8][abcdefgh][1-8][qrbn]{0,1}");
+        while(searchMovesIndex+i<inputTokens.size())
         {
-            if(in_go_isGoCommand(commandTokens.at(searchMovesIndex+i))) //terminate loop when next token is a recognized sub command
+            if(!(in_go_isGoCommand(inputTokens.at(searchMovesIndex+i)))) //terminate loop when next token is a recognized sub command
             {
                 break;
             }
-            i++;
-        }
-        std::regex uciMoveRegexPattern("[abcdefgh][1-8][abcdefgh][1-8][qrbn]{0,1}");
-        for(int j=searchMovesIndex;j<searchMovesIndex+i;j++)
-        {
-            if(!(std::regex_match(commandTokens.at(j),uciMoveRegexPattern)))
+            if(!std::regex_match(inputTokens.at(i),uciMoveRegexPattern))
             {
                 std::cerr << "error545: invalid move syntax" << std::endl;
+                return false;
                 break;
             }
-            uciGoParams.searchMoves.push_back(uciNotation_TO_move(commandTokens.at(j)));
+            uciGoParams.searchMoves.push_back(uciNotation_TO_move(inputTokens.at(i)));
+            i++;
         }
     }
     if(ponderIndex!=-1)
@@ -612,136 +659,191 @@ void UCI::in_go_parse()
     }
     std::regex integerTypeRegex("[0-9]{1,9}");
     std::regex longTypeRegex("[0-9]{1,17}");
-    if(wTimeIndex!=-1 && wTimeIndex+1<commandTokens.size())
+    if(wTimeIndex!=-1 && wTimeIndex+1<inputTokens.size())
     {
-        if(!(in_go_isGoCommand(commandTokens.at(wTimeIndex+1))))
+        if(!(in_go_isGoCommand(inputTokens.at(wTimeIndex+1))))
         {
-            if(!(std::regex_match(commandTokens.at(wTimeIndex+1),longTypeRegex)))
+            if(std::regex_match(inputTokens.at(wTimeIndex+1),longTypeRegex))
+            {
+                uciGoParams.wTime = std::stol(inputTokens.at(wTimeIndex+1));
+            }
+            else
             {
                 std::cerr << "error563: invalid time argument" << std::endl;
-            }
-            else
-            {
-                uciGoParams.wTime = std::stol(commandTokens.at(wTimeIndex+1));
+                return false;
             }
         }
-    }
-    if(bTimeIndex!=-1 && bTimeIndex+1<commandTokens.size())
-    {
-        if(!(in_go_isGoCommand(commandTokens.at(bTimeIndex+1))))
+        else
         {
-            if(!(std::regex_match(commandTokens.at(bTimeIndex+1),longTypeRegex)))
+            std::cerr << "error649: not time argument provided" << std::endl;
+			return false;
+        }
+    }
+    if(bTimeIndex!=-1 && bTimeIndex+1<inputTokens.size())
+    {
+        if(!(in_go_isGoCommand(inputTokens.at(bTimeIndex+1))))
+        {
+            if(std::regex_match(inputTokens.at(bTimeIndex+1),longTypeRegex))
+            {
+                uciGoParams.bTime = std::stol(inputTokens.at(bTimeIndex+1));
+            }
+            else
             {
                 std::cerr << "error563: invalid time argument" << std::endl;
-            }
-            else
-            {
-                uciGoParams.bTime = std::stol(commandTokens.at(bTimeIndex+1));
+                return false;
             }
         }
-    }
-    if(wIncIndex!=-1 && wIncIndex+1<commandTokens.size())
-    {
-        if(!(in_go_isGoCommand(commandTokens.at(wIncIndex+1))))
+        else
         {
-            if(!(std::regex_match(commandTokens.at(wIncIndex+1),longTypeRegex)))
+            std::cerr << "error649: not time argument provided" << std::endl;
+			return false;
+        }
+    }
+    if(wIncIndex!=-1 && wIncIndex+1<inputTokens.size())
+    {
+        if(!(in_go_isGoCommand(inputTokens.at(wIncIndex+1))))
+        {
+            if(std::regex_match(inputTokens.at(wIncIndex+1),longTypeRegex))
+            {
+                uciGoParams.wInc = std::stol(inputTokens.at(wIncIndex+1));
+            }
+            else
             {
                 std::cerr << "error563: invalid time argument" << std::endl;
-            }
-            else
-            {
-                uciGoParams.wInc = std::stol(commandTokens.at(wIncIndex+1));
+                return false;
             }
         }
-    }
-    if(bIncIndex!=-1 && bIncIndex+1<commandTokens.size())
-    {
-        if(!(in_go_isGoCommand(commandTokens.at(bIncIndex+1))))
+        else
         {
-            if(!(std::regex_match(commandTokens.at(bIncIndex+1),longTypeRegex)))
+            std::cerr << "error649: not time argument provided" << std::endl;
+			return false;
+        }
+    }
+    if(bIncIndex!=-1 && bIncIndex+1<inputTokens.size())
+    {
+        if(!(in_go_isGoCommand(inputTokens.at(bIncIndex+1))))
+        {
+            if(std::regex_match(inputTokens.at(bIncIndex+1),longTypeRegex))
+            {
+                uciGoParams.bInc = std::stol(inputTokens.at(bIncIndex+1));
+            }
+            else
             {
                 std::cerr << "error563: invalid time argument" << std::endl;
+                return false;
+            }
+        }
+        else
+        {
+            std::cerr << "error649: not time argument provided" << std::endl;
+			return false;
+        }
+    }
+    if(movesToGoIndex!=-1 && movesToGoIndex+1<inputTokens.size())
+    {
+        if(!(in_go_isGoCommand(inputTokens.at(movesToGoIndex+1))))
+        {
+            if(std::regex_match(inputTokens.at(movesToGoIndex+1),integerTypeRegex))
+            {
+                uciGoParams.movesToGo = std::stoi(inputTokens.at(movesToGoIndex+1));
             }
             else
             {
-                uciGoParams.bInc = std::stol(commandTokens.at(bIncIndex+1));
+                std::cerr << "error722: invalid movestogo argument" << std::endl;
+                return false;
             }
         }
-    }
-    if(movesToGoIndex!=-1 && movesToGoIndex+1<commandTokens.size())
-    {
-        if(!(in_go_isGoCommand(commandTokens.at(movesToGoIndex+1))))
+        else
         {
-            if(!(std::regex_match(commandTokens.at(movesToGoIndex+1),integerTypeRegex)))
+            std::cerr << "error721: no movestogo argument provided" << std::endl;
+			return false;
+        }
+    }
+    if(depthIndex!=-1 && depthIndex+1<inputTokens.size())
+    {
+        if(!(in_go_isGoCommand(inputTokens.at(depthIndex+1))))
+        {
+            if(std::regex_match(inputTokens.at(depthIndex+1),integerTypeRegex))
             {
-                std::cerr << "error661: invalid moves argument" << std::endl;
+                uciGoParams.depth = std::stoi(inputTokens.at(depthIndex+1));
             }
             else
-            {
-                uciGoParams.movesToGo = std::stoi(commandTokens.at(movesToGoIndex+1));
-            }
-        }
-    }
-    if(depthIndex!=-1 && depthIndex+1<commandTokens.size())
-    {
-        if(!(in_go_isGoCommand(commandTokens.at(depthIndex+1))))
-        {
-            if(!(std::regex_match(commandTokens.at(depthIndex+1),integerTypeRegex)))
             {
                 std::cerr << "error633: invalid depth argument" << std::endl;
-            }
-            else
-            {
-                uciGoParams.depth = std::stoi(commandTokens.at(depthIndex+1));
+                return false;
             }
         }
-    }
-    if(nodesIndex!=-1 && nodesIndex+1<commandTokens.size())
-    {
-        if(!(in_go_isGoCommand(commandTokens.at(nodesIndex+1))))
+        else
         {
-            if(!(std::regex_match(commandTokens.at(nodesIndex+1),integerTypeRegex)))
+            std::cerr << "error739: no depth argument provided" << std::endl;
+			return false;
+        }
+    }
+    if(nodesIndex!=-1 && nodesIndex+1<inputTokens.size())
+    {
+        if(!(in_go_isGoCommand(inputTokens.at(nodesIndex+1))))
+        {
+            if(std::regex_match(inputTokens.at(nodesIndex+1),integerTypeRegex))
+            {
+                uciGoParams.nodes = std::stoi(inputTokens.at(nodesIndex+1));
+            }
+            else
             {
                 std::cerr << "error647: invalid nodes argument" << std::endl;
+                return false;
+            }
+        }
+        else
+        {
+            std::cerr << "error763: no nodes argument provided" << std::endl;
+			return false;
+        }
+    }
+    if(mateIndex!=-1 && mateIndex+1<inputTokens.size())
+    {
+        if(!(in_go_isGoCommand(inputTokens.at(mateIndex+1))))
+        {
+            if(std::regex_match(inputTokens.at(mateIndex+1),integerTypeRegex))
+            {
+                uciGoParams.mate = std::stoi(inputTokens.at(mateIndex+1));
             }
             else
             {
-                uciGoParams.nodes = std::stoi(commandTokens.at(nodesIndex+1));
+                std::cerr << "error661: invalid mate argument" << std::endl;
+                return false;
             }
         }
-    }
-    if(mateIndex!=-1 && mateIndex+1<commandTokens.size())
-    {
-        if(!(in_go_isGoCommand(commandTokens.at(mateIndex+1))))
+        else
         {
-            if(!(std::regex_match(commandTokens.at(mateIndex+1),integerTypeRegex)))
+            std::cerr << "error661: no mate argument provided" << std::endl;
+			return false;
+        }
+    }
+    if(moveTimeIndex!=-1 && moveTimeIndex+1<inputTokens.size())
+    {
+        if(!(in_go_isGoCommand(inputTokens.at(moveTimeIndex+1))))
+        {
+            if(std::regex_match(inputTokens.at(moveTimeIndex+1),longTypeRegex))
             {
-                std::cerr << "error661: invalid move argument" << std::endl;
+                uciGoParams.moveTime = std::stol(inputTokens.at(moveTimeIndex+1));
             }
             else
-            {
-                uciGoParams.mate = std::stoi(commandTokens.at(mateIndex+1));
-            }
-        }
-    }
-    if(moveTimeIndex!=-1 && moveTimeIndex+1<commandTokens.size())
-    {
-        if(!(in_go_isGoCommand(commandTokens.at(moveTimeIndex+1))))
-        {
-            if(!(std::regex_match(commandTokens.at(moveTimeIndex+1),longTypeRegex)))
             {
                 std::cerr << "error563: invalid time argument" << std::endl;
+                return false;
             }
-            else
-            {
-                uciGoParams.moveTime = std::stol(commandTokens.at(moveTimeIndex+1));
-            }
+        }
+        else
+        {
+            std::cerr << "error649: no time argument provided" << std::endl;
+			return false;
         }
     }
     if(infiniteIndex!=-1)
     {
         uciGoParams.infinite = true;
     }
+    return true;
 }
 bool UCI::in_go_searchThread_shouldStop()
 {
@@ -751,6 +853,10 @@ bool UCI::in_go_searchThread_shouldStop()
     }
     if(uciGoParams.infinite == false)
     {
+        //TODO: implement time managment algorithm for use of wTime, bTime, increment, movesToGo
+        //TODO: add logic to stop when nodes, depth
+        //TODO: add logic for finding mate in x moves (if not found it needs to return null move 0000)
+        //TODO: research the concept of ponder more so as to understand how to implement it correctly
         if(uciGoParams.moveTime!=-1)
         {
             std::chrono::duration duration = std::chrono::steady_clock::now() - goThread_startTime;
@@ -770,12 +876,20 @@ void UCI::in_go_searchThread()
         uciPositionTree->expandNextBestBranch();
     }
     out_bestmove(uciPositionTree->getBestMove());
-    uciStates.isready = true;
+    uciStates.isready = true; //update isready
 }
 void UCI::in_go()
 {
-    in_go_parse();
-    uciStates.stop = false;
+    if(uciStates.isready==false)
+    {
+        std::cerr << "error288: engine is not ready" << std::endl;
+        return;
+    }
+    if(uciPositionTree==NULL)
+    {
+        std::cerr << "error424: position hasn't been initialized" << std::endl;
+        return;
+    }
     if(goThread!=NULL)
     {
         if(goThread->joinable())
@@ -784,7 +898,11 @@ void UCI::in_go()
         }
         delete goThread;
     }
+    uciGoParams = ucigoparams();
+    if(!in_go_parse())
+        return;
     uciStates.isready = false;
+    uciStates.stop = false;
     goThread_startTime = std::chrono::steady_clock::now();
     goThread = new std::thread(&UCI::in_go_searchThread, this);
 }
@@ -848,18 +966,11 @@ move UCI::uciNotation_TO_move(std::string uciMoveString)
         tempMove.endRank = Position::notationRank_TO_engineRank(uciMoveString[3]);
         if(uciMoveString.size()==5)
         {
-            tempMove.endPieceType = uciMoveString.at(4);
+            tempMove.endPieceType = uciMoveString[4];
         }
         else
         {
-            if(uciPositionTree->getCurrentPosition()->theBoard[tempMove.startRank][tempMove.startFile].piecePtr==NULL)
-            {
-                tempMove.endPieceType='\0';
-            }
-            else
-            {
-                tempMove.endPieceType=uciPositionTree->getCurrentPosition()->theBoard[tempMove.startRank][tempMove.startFile].piecePtr->type;
-            }
+            tempMove.endPieceType='\0';
         }
         return tempMove;
     }
@@ -881,12 +992,9 @@ std::string UCI::move_TO_uciNotation(move engineMove)
         uciMove.push_back(Position::engineRank_TO_notationRank(engineMove.startRank));
         uciMove.push_back(Position::engineFile_TO_notationFile(engineMove.endFile));
         uciMove.push_back(Position::engineRank_TO_notationRank(engineMove.endRank));
-        if(uciPositionTree->getCurrentPosition()->theBoard[engineMove.startRank][engineMove.startFile].piecePtr!=NULL)
+        if(engineMove.endPieceType!='\0')
         {
-            if(uciPositionTree->getCurrentPosition()->theBoard[engineMove.startRank][engineMove.startFile].piecePtr->type!=engineMove.endPieceType) //if start piece type and end piece type are different then this is probably a promotion
-            {
-                uciMove.push_back(engineMove.endPieceType);
-            }
+            uciMove.push_back(Position::engineRank_TO_notationRank(engineMove.endPieceType));
         }
     }
     return uciMove;
@@ -897,7 +1005,7 @@ void UCI::setupPositionTree()
     {
         delete uciPositionTree;
     }
-    uciPositionTree = new PositionTree(new Position(),2);
+    uciPositionTree = new PositionTree(2);
 }
 void UCI::setupPositionTree(std::string fenString)
 {
@@ -905,5 +1013,5 @@ void UCI::setupPositionTree(std::string fenString)
     {
         delete uciPositionTree;
     }
-    uciPositionTree = new PositionTree(new Position(fenString.c_str()),2);
+    uciPositionTree = new PositionTree(fenString.c_str(),2);
 }
