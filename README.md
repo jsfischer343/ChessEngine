@@ -20,18 +20,3 @@ Bluespiral is currently authored solely by John Fischer.
 ## AI Disclaimer
 
 All code and content in this repository is written line by line using available documentation or leveraging existing libraries. No AI generated code is used.
-
-## Licence
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.

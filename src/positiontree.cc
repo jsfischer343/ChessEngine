@@ -94,31 +94,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 		currentNodePositionObjIsEphemeral = true;
 		generatePositionTreeRecursive_reinstantiatePositionObjsRecursiveUpwards(node);
 	}
-    if(exceededMemoryLimit)
-    {
-		node->colorToMove = node->position->colorToMove;
-		node->branchRecursiveAvg = node->instantEval; //if this is a leaf node then it is assumed that the branchAverage is the instant eval
-		node->branchBest = node->instantEval; //if this is a leaf node then it is assumed that the branchBest is the instant eval
-		if(currentNodePositionObjIsEphemeral)
-		{
-			generatePositionTreeRecursive_destroyPositionObjsRecursiveUpwards(node);
-		}
-        return node;
-    }
-	else if(getMemoryUsage()>POSITIONTREE_MEMORY_LIMIT)
-	{
-        exceededMemoryLimit = true;
-		warnTreeMemoryOverflow();
-		node->colorToMove = node->position->colorToMove;
-		node->branchRecursiveAvg = node->instantEval;
-		node->branchBest = node->instantEval;
-		if(currentNodePositionObjIsEphemeral)
-		{
-			generatePositionTreeRecursive_destroyPositionObjsRecursiveUpwards(node);
-		}
-		return node;
-	}
-	else if(depth==0 || !(node->position->positionState==0 && node->drawByRepetition==false))
+	if(depth==0 || !(node->position->positionState==0 && node->drawByRepetition==false))
 	{
 		node->colorToMove = node->position->colorToMove;
 		node->branchRecursiveAvg = node->instantEval;
@@ -449,21 +425,6 @@ bool PositionTree::checkForRepetition(treenode* node)
 		currentNode = currentNode->parent;
 	}
 	return false;
-}
-//--Memory--
-long PositionTree::getMemoryUsage()
-{
-	struct rusage usage;
-	getrusage(RUSAGE_SELF, &usage);
-	return usage.ru_maxrss;
-}
-void PositionTree::warnTreeMemoryOverflow()
-{
-		fprintf(stderr,"Error: Tree expansion exceeded specified memory limits. Raise limits or reduce expansion.\n");
-		struct rusage usage;
-		getrusage(RUSAGE_SELF, &usage);
-		double peakUsage = usage.ru_maxrss/1000;
-		fprintf(stderr,"Peak memory usage: %.1f MB\n", peakUsage);
 }
 
 //--Get--

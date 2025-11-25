@@ -18,7 +18,6 @@
 
 #ifndef __POSITIONTREE_HH__
 #define __POSITIONTREE_HH__
-#include <sys/resource.h>
 #include <string>
 #include <cstdint>
 #include <cstring>
@@ -30,7 +29,6 @@
 #include "move.hh"
 #include "position.hh"
 
-#define POSITIONTREE_MEMORY_LIMIT 820*1024 //820MiB
 #define POSITION_OBJ_EPHEMERAL_DEPTH 3 //nodes at this depth will no longer save their position obj and will instead only instantiate it when needed (purpose being to save memory as position objects take up excessive memory)
 #define MAX_DEPTH 4 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
 #define EVALUATION_EQUIVALENCY_THRESHOLD 0.01 //The differential threshold that is used to determine if two moves have 'essentially' equal evaluation
@@ -69,9 +67,6 @@ class PositionTree
 		treenode* root; //The root of the tree which acts at the 'current position'
 		treeinfo treeInfo; //Informaiton about the positiontree for optimizations
 
-        //FLAGS
-        bool exceededMemoryLimit = false;
-
     public:
 		//FUNCTIONS
 		PositionTree(int depth);
@@ -104,10 +99,6 @@ class PositionTree
 		void sortChildrenByBranchBest(treenode* node);
 		bool positionsIdentical(treenode* node1, treenode* node2);
 		bool checkForRepetition(treenode* node);
-
-    //--Memory--
-		long getMemoryUsage();
-		void warnTreeMemoryOverflow();
 
     public:
 	//--Get--
