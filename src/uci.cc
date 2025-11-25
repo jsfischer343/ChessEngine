@@ -63,6 +63,10 @@ bool UCI::parseCommand_validCommand(std::string command)
     {
         return true;
     }
+    else if(command=="debugdump")
+    {
+        return true;
+    }
     else if(command=="quit")
     {
         return true;
@@ -150,6 +154,10 @@ void UCI::parseCommand(std::string userInput)
     else if(inputTokens.at(0)=="ponderhit")
     {
         in_ponderhit();
+    }
+    else if(inputTokens.at(0)=="debugdump")
+    {
+        in_debugdump();
     }
     else
     {
@@ -265,37 +273,40 @@ void UCI::in_ucinewgame()
             delete uciPositionTree;
         }
     }
+    previousMoves.clear();
 }
-bool UCI::in_position_validateMoveVectorAgainstPreviousMoves(std::vector<std::string> moveVector)
+bool UCI::in_position_validateMoveVectorAgainstPreviousMoves()
 {
-    if(moveVector.size()<previousMoves.size())
+    if((inputTokens.size()-3)<previousMoves.size())
     {
         return false;
     }
-    for(int i=0;i<previousMoves.size();i++)
+    for(int i=3;i<previousMoves.size()+3;i++)
     {
-        if(moveVector.at(i)!=previousMoves.at(i))
+        if(inputTokens.at(i)!=previousMoves.at(i-3))
         {
             return false;
         }
     }
     return true;
 }
-void UCI::in_position_updatePreviousMoveVector(std::vector<std::string> moveVector)
-{
-    for(int i=previousMoves.size();i<moveVector.size();i++)
-    {
-        previousMoves.push_back(moveVector.at(i));
-    }
-}
 void UCI::in_position_makeMoves(int startingTokenIndex)
 {
+    if(startingTokenIndex==3)
+    {
+        previousMoves.clear();
+    }
     for(int i=startingTokenIndex;i<inputTokens.size();i++)
     {
         if(!(uciPositionTree->makeMove(uciNotation_TO_move(inputTokens.at(i)))))
         {
             std::cerr << "error287: invalid move was processed" << std::endl;
         }
+        else
+        {
+            previousMoves.push_back(inputTokens.at(i));
+        }
+
     }
 }
 void UCI::in_position()
@@ -350,12 +361,7 @@ void UCI::in_position()
                 }
                 else
                 {
-                    std::vector<std::string> providedMoveVector;
-                    for(int i=9;i<inputTokens.size();i++)
-                    {
-                        providedMoveVector.push_back(inputTokens.at(i));
-                    }
-                    if(!in_position_validateMoveVectorAgainstPreviousMoves(providedMoveVector))
+                    if(!in_position_validateMoveVectorAgainstPreviousMoves())
                     {
                         setupPositionTree(fenString);
                         in_position_makeMoves(9);
@@ -363,7 +369,6 @@ void UCI::in_position()
                     else
                     {
                         in_position_makeMoves(previousMoves.size()+9);
-                        in_position_updatePreviousMoveVector(providedMoveVector);
                     }
                 }
             }
@@ -382,19 +387,14 @@ void UCI::in_position()
                     std::cerr << "error279: position command 'moves' signifier missing or malformed" << std::endl;
                     return;
                 }
-                if(uciPositionTree==NULL || lastStartingFEN!="startpos")
+                if(uciPositionTree==NULL)
                 {
                     setupPositionTree();
                     in_position_makeMoves(3);
                 }
                 else
                 {
-                    std::vector<std::string> providedMoveVector;
-                    for(int i=3;i<inputTokens.size();i++)
-                    {
-                        providedMoveVector.push_back(inputTokens.at(i));
-                    }
-                    if(!in_position_validateMoveVectorAgainstPreviousMoves(providedMoveVector))
+                    if(!in_position_validateMoveVectorAgainstPreviousMoves())
                     {
                         setupPositionTree();
                         in_position_makeMoves(3);
@@ -402,15 +402,13 @@ void UCI::in_position()
                     else
                     {
                         in_position_makeMoves(previousMoves.size()+3);
-                        in_position_updatePreviousMoveVector(providedMoveVector);
                     }
                 }
             }
-            lastStartingFEN = "startpos";
         }
         else
         {
-            std::cerr << "error387: no starting position was provided" << std::endl;
+            std::cerr << "error387: missing fen or startpos keywords" << std::endl;
         }
     }
     else
@@ -915,6 +913,15 @@ void UCI::in_ponderhit()
     //???
     std::cerr << "error716: command not implemented" << std::endl;
 }
+void UCI::in_debugdump()
+{
+    uciPositionTree->printPositionTree(1);
+    uciPositionTree->printTreeInfo();
+    Position* debugPosition = uciPositionTree->getCurrentPosition();
+    debugPosition->printBoard();
+    debugPosition->printInfo();
+    debugPosition->printInstantEvalBreakdown();
+}
 
 void UCI::out_id()
 {
@@ -994,7 +1001,7 @@ std::string UCI::move_TO_uciNotation(move engineMove)
         uciMove.push_back(Position::engineRank_TO_notationRank(engineMove.endRank));
         if(engineMove.endPieceType!='\0')
         {
-            uciMove.push_back(Position::engineRank_TO_notationRank(engineMove.endPieceType));
+            uciMove.push_back(engineMove.endPieceType);
         }
     }
     return uciMove;

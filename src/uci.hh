@@ -72,8 +72,7 @@ class UCI
         void in_register();
         void in_ucinewgame();
         void in_position();
-            bool in_position_validateMoveVectorAgainstPreviousMoves(std::vector<std::string> moveVector);
-            void in_position_updatePreviousMoveVector(std::vector<std::string> moveVector);
+            bool in_position_validateMoveVectorAgainstPreviousMoves();
             void in_position_makeMoves(int startingTokenIndex);
         void in_go();
             bool in_go_parse();
@@ -82,7 +81,8 @@ class UCI
             bool in_go_isGoCommand(std::string command);
         void in_stop();
         void in_ponderhit();
-        void in_quit();
+        //void in_quit(); //implemented by CLI class
+        void in_debugdump();
 
         void out_id();
         void out_uciok();

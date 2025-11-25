@@ -828,9 +828,9 @@ char* Position::getNotation(const move& moveInQuestion) const
 						if(blackPieces[i].moves[j]->rank == moveInQuestion.endRank && blackPieces[i].moves[j]->file == moveInQuestion.endFile)
 						{
 							if(blackPieces[i].rank == moveInQuestion.startRank)
-								rankDisambig = true;
-							else
 								fileDisambig = true;
+							else
+								rankDisambig = true;
 						}
 					}
 				}

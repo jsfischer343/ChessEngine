@@ -26,10 +26,26 @@ int main()
 {
 	auto startTime = std::chrono::high_resolution_clock::now();
 
-	// //debug
-	// PositionTree* debugPositionTree = new PositionTree(new Position("1rb1kbnr/pppp1ppp/1qn5/3P4/8/2P2N2/PP2BPPP/RNBQK2R w KQk - 1 8"),4);
-	// //debugPositionTree->expandXNextBestBranches(500);
+	//debug
+	// PositionTree* debugPositionTree = new PositionTree("rnbqkbnr/ppp2ppp/4p3/3p4/8/4PN2/PPPP1PPP/RNBQKB1R w KQkq - 0 3",2);
+	// std::chrono::time_point<std::chrono::steady_clock> searchStartTime = std::chrono::steady_clock::now();
+	// while(true)
+	// {
+	// 	std::chrono::duration duration = std::chrono::steady_clock::now() - searchStartTime;
+	// 	std::chrono::duration duration_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+	// 	if(15000<duration_milliseconds.count())
+	// 	{
+	// 		break;
+	// 	}
+	// 	debugPositionTree->expandNextBestBranch();
+	// }
 	// debugPositionTree->printPositionTree(1);
+	// debugPositionTree->printTreeInfo();
+	// debugPositionTree->getCurrentPosition()->printBoard();
+	// debugPositionTree->getCurrentPosition()->printInstantEvalBreakdown();
+	// char* bestMoveNotation = debugPositionTree->getCurrentPosition()->getNotation(debugPositionTree->getBestMove());
+	// printf("Bestmove: %s\n",bestMoveNotation);
+	// delete bestMoveNotation;
 	// delete debugPositionTree;
 
 	printWelcomeText();

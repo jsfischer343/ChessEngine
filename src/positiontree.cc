@@ -7,6 +7,7 @@ PositionTree::PositionTree(int depth)
     root->parent = NULL;
 	Position* startingPosition = new Position();
     root->position = startingPosition;
+	root->colorToMove = startingPosition->colorToMove;
     root->moveMade = move();
     root->depth = 0;
 	root = generatePositionTreeRecursive(root, depth);
@@ -18,6 +19,7 @@ PositionTree::PositionTree(const char* startingPositionFEN, int depth)
     root->parent = NULL;
 	Position* startingPosition = new Position(startingPositionFEN);
     root->position = startingPosition;
+	root->colorToMove = startingPosition->colorToMove;
     root->moveMade = move();
     root->depth = 0;
 	root = generatePositionTreeRecursive(root, depth);
@@ -76,6 +78,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 	}
     if(exceededMemoryLimit)
     {
+		node->colorToMove = node->position->colorToMove;
 		node->branchRecursiveAvg = node->instantEval; //if this is a leaf node then it is assumed that the branchAverage is the instant eval
 		node->branchBest = node->instantEval; //if this is a leaf node then it is assumed that the branchBest is the instant eval
 		if(currentNodePositionObjIsEphemeral)
@@ -88,6 +91,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 	{
         exceededMemoryLimit = true;
 		warnTreeMemoryOverflow();
+		node->colorToMove = node->position->colorToMove;
 		node->branchRecursiveAvg = node->instantEval;
 		node->branchBest = node->instantEval;
 		if(currentNodePositionObjIsEphemeral)
@@ -98,6 +102,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 	}
 	else if(depth==0 || !(node->position->positionState==0 && node->drawByRepetition==false))
 	{
+		node->colorToMove = node->position->colorToMove;
 		node->branchRecursiveAvg = node->instantEval;
 		node->branchBest = node->instantEval;
 		if(currentNodePositionObjIsEphemeral)
@@ -112,6 +117,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 		{
 			generatePositionTreeRecursive(node->children[i], depth-1);
 		}
+		node->colorToMove = node->position->colorToMove;
 		node->branchRecursiveAvg = node->instantEval;
 		node->branchBest = node->instantEval;
 		refreshTreeCalculationsRecursiveUpwards(node);
@@ -127,6 +133,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 	}
 	if(node->children_L==0) //if this is true than there are no more legal moves or the game has come to a draw for this node.
 	{
+		node->colorToMove = node->position->colorToMove;
 		node->branchRecursiveAvg = node->instantEval;
 		node->branchBest = node->instantEval;
 		if(currentNodePositionObjIsEphemeral)
@@ -141,6 +148,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 		currentMoveArr = node->position->getAllMoves();
 		for(int i=0;i<node->children_L;i++)
 		{
+			treeInfo.totalNodes++;
 			node->children[i] = new treenode();
 			Position* resultingPosition = new Position(node->position, currentMoveArr[i]);
 			node->children[i]->parent = node;
@@ -170,7 +178,6 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 		node->branchBest = node->children[0]->branchBest;
 		delete[] currentMoveArr;
 	}
-
 	if(currentNodePositionObjIsEphemeral)
 	{
 		generatePositionTreeRecursive_destroyPositionObjsRecursiveUpwards(node);
@@ -212,7 +219,7 @@ PositionTree::treenode* PositionTree::expandNextBestBranch_findExpansionBranchRe
 {
 	if(currentNode->children_L==0)
 	{
-		if(currentNode->depth<MAX_DEPTH)
+		if(currentNode->depth<(MAX_DEPTH+root->depth))
 		{
 			return currentNode;
 		}
@@ -355,7 +362,7 @@ void PositionTree::sortChildrenByBranchBest(treenode* node)
 			}
 		}
 	}
-	else
+	else if(node->colorToMove=='b')
 	{
 		for(int i=0;i<node->children_L;i++)
 		{
@@ -369,6 +376,10 @@ void PositionTree::sortChildrenByBranchBest(treenode* node)
 				}
 			}
 		}
+	}
+	else
+	{
+		throw;
 	}
 }
 bool PositionTree::positionsIdentical(treenode* node1, treenode* node2) //Compares that two positions have the same pieces on the same squares (as opposed to comparing memory)
@@ -461,7 +472,7 @@ move PositionTree::getBestRandomMove()
 		topMoveBranchBest-=EVALUATION_EQUIVALENCY_THRESHOLD;
 		while(i<root_children_L)
 		{
-			if(root->children[i]->branchBest>=topMoveBranchBest)
+			if(root->children[i]->branchBest<=topMoveBranchBest)
 				break;
 			i++; //increment while the next move is similar enough in evaluation to the best move
 		}
@@ -471,7 +482,7 @@ move PositionTree::getBestRandomMove()
 		topMoveBranchBest+=EVALUATION_EQUIVALENCY_THRESHOLD;
 		while(i<root_children_L)
 		{
-			if(root->children[i]->branchBest<=topMoveBranchBest)
+			if(root->children[i]->branchBest>=topMoveBranchBest)
 				break;
 			i++;
 		}
@@ -564,6 +575,11 @@ bool PositionTree::makeMove(const move moveMade)
 }
 
 //--Debug--
+void PositionTree::printTreeInfo()
+{
+	printf("--Position Tree Info--\n");
+	printf("Nodes: %ld\n",treeInfo.totalNodes);
+}
 void PositionTree::printPositionTree_recursive(PositionTree::treenode* node)
 {
 	char* moveNotation;
@@ -576,11 +592,11 @@ void PositionTree::printPositionTree_recursive(PositionTree::treenode* node)
 	{
 		moveNotation = node->parent->position->getNotation(node->moveMade);
 	}
-    for(int i=0;i<node->depth;i++)
+    for(int i=root->depth;i<node->depth;i++)
     {
         printf("\t");
     }
-    printf("[%d]: %s  Instant Eval: %.3f  Branch Recursive Avg: %.3f  Branch Best: %.3f\n",node->depth,moveNotation,node->instantEval,node->branchRecursiveAvg,node->branchBest);
+    printf("[%d]: %s  IE: %.3f  BRA: %.3f  BB: %.3f\n",node->depth,moveNotation,node->instantEval,node->branchRecursiveAvg,node->branchBest);
 	if(node->children_L!=0)
 	{
 		for(int i=0;i<node->children_L;i++)
@@ -606,11 +622,11 @@ void PositionTree::printPositionTree_recursive(PositionTree::treenode* node, int
 	{
 		moveNotation = node->parent->position->getNotation(node->moveMade);
 	}
-    for(int i=0;i<node->depth;i++)
+    for(int i=root->depth;i<node->depth;i++)
     {
         printf("\t");
     }
-    printf("[%d]: %s  Instant Eval: %.3f  Branch Recursive Avg: %.3f  Branch Best: %.3f\n",node->depth,moveNotation,node->instantEval,node->branchRecursiveAvg,node->branchBest);
+    printf("[%d]: %s  IE: %.3f  BRA: %.3f  BB: %.3f\n",node->depth,moveNotation,node->instantEval,node->branchRecursiveAvg,node->branchBest);
 	if(node->children_L!=0&&depth!=0)
 	{
 		for(int i=0;i<node->children_L;i++)
