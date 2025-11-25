@@ -35,21 +35,21 @@
 
 //Instant Evaluation Tuning Parameters
 //Symmetric Parameters
-#define PIECE_CONTROL_WEIGHT 0	//weight given to controlling a square with a piece on it (in proportion to that piece)
-#define SQUARE_CONTROL_WEIGHT 0	//weight given to controlling an empty square
+#define PIECE_CONTROL_WEIGHT 0.25	//weight given to controlling a square with a enemy piece on it (in proportion to that piece)
+#define SQUARE_CONTROL_WEIGHT 0.8	//flat weight given to controlling a square regardless of if there is a piece on it or not
 #define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_DEFENSIVE 0
 #define KING_ADJACENT_SQUARE_CONTROL_WEIGHT_OFFENSIVE 0
 #define PAWN_WEIGHT_1 0 //value of pawn that is 1 out 6 squares from promotion
 #define PAWN_WEIGHT_2 0 //and so on
 #define PAWN_WEIGHT_3 0
 #define PAWN_WEIGHT_4 0
-#define PAWN_WEIGHT_PASSED_1 0
-#define PAWN_WEIGHT_PASSED_2 0
-#define PAWN_WEIGHT_PASSED_3 0
-#define PAWN_WEIGHT_PASSED_4 0
-#define PAWN_WEIGHT_PASSED_5 0 //value of pawn that is one square from promotion
+#define PAWN_WEIGHT_PASSED_1 0.2
+#define PAWN_WEIGHT_PASSED_2 0.2
+#define PAWN_WEIGHT_PASSED_3 0.3
+#define PAWN_WEIGHT_PASSED_4 0.5
+#define PAWN_WEIGHT_PASSED_5 1 //value of pawn that is one square from promotion
 //Asymmetric Parameters
-#define TURN_BASED_CONTROL_BONUS 1 //multiplicative factor for controlling a piece on your turn
+#define TURN_BASED_CONTROL_BONUS 4 //multiplicative factor for controlling a piece on your turn
 
 class Position
 {

@@ -289,6 +289,7 @@ void UCI::in_ucinewgame()
         if(uciPositionTree!=NULL)
         {
             delete uciPositionTree;
+            uciPositionTree=NULL;
         }
     }
     previousMoves.clear();
@@ -1029,6 +1030,7 @@ void UCI::setupPositionTree()
     if(uciPositionTree!=NULL)
     {
         delete uciPositionTree;
+        uciPositionTree=NULL;
     }
     uciPositionTree = new PositionTree(2);
 }

@@ -294,7 +294,7 @@ Position::Position(const Position* lastPosition, const move moveMade)
 	//Remove extra pawn if last move was en passant
 	if(lastPosition->enPassantRank!=-1)
 	{
-		if(lastPosition->enPassantFile==moveMade.endFile && lastPosition->enPassantRank==moveMade.endRank)
+		if(lastPosition->enPassantFile==moveMade.endFile && lastPosition->enPassantRank==moveMade.endRank && lastPosition->getPieceType(moveMade.startRank,moveMade.startFile)=='p')
 		{
 			if(moveMade.endRank==2)
 			{
@@ -3212,23 +3212,26 @@ void Position::resolve_instantEval()
 			if(tempWhiteTargeters>tempBlackTargeters)
 			{
 				//-general-
-				if(tempPieceType=='q')
-					positionEvaluation.positional_squarecontrol_queens+=(9*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
-				else if(tempPieceType=='r')
+				if(getPieceColor(i,j)=='b')
 				{
-					positionEvaluation.positional_squarecontrol_rooks+=(5*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
-				}
-				else if(tempPieceType=='b')
-				{
-					positionEvaluation.positional_squarecontrol_bishops+=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
-				}
-				else if(tempPieceType=='n')
-				{
-					positionEvaluation.positional_squarecontrol_knights+=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
-				}
-				else if(tempPieceType=='p')
-				{
-					positionEvaluation.positional_squarecontrol_pawns+=(1*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
+					if(tempPieceType=='q')
+						positionEvaluation.positional_squarecontrol_queens+=(9*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
+					else if(tempPieceType=='r')
+					{
+						positionEvaluation.positional_squarecontrol_rooks+=(5*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
+					}
+					else if(tempPieceType=='b')
+					{
+						positionEvaluation.positional_squarecontrol_bishops+=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
+					}
+					else if(tempPieceType=='n')
+					{
+						positionEvaluation.positional_squarecontrol_knights+=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
+					}
+					else if(tempPieceType=='p')
+					{
+						positionEvaluation.positional_squarecontrol_pawns+=(1*PIECE_CONTROL_WEIGHT*turnBasedBonusWhite);
+					}
 				}
 				positionEvaluation.positional_squarecontrol_base+=SQUARE_CONTROL_WEIGHT;
 
@@ -3245,23 +3248,26 @@ void Position::resolve_instantEval()
 			else if(tempWhiteTargeters<tempBlackTargeters)
 			{
 				//-general-
-				if(tempPieceType=='q')
-					positionEvaluation.positional_squarecontrol_queens-=(9*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
-				else if(tempPieceType=='r')
+				if(getPieceColor(i,j)=='w')
 				{
-					positionEvaluation.positional_squarecontrol_rooks-=(5*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
-				}
-				else if(tempPieceType=='b')
-				{
-					positionEvaluation.positional_squarecontrol_bishops-=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
-				}
-				else if(tempPieceType=='n')
-				{
-					positionEvaluation.positional_squarecontrol_knights-=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
-				}
-				else if(tempPieceType=='p')
-				{
-					positionEvaluation.positional_squarecontrol_pawns-=(1*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
+					if(tempPieceType=='q')
+						positionEvaluation.positional_squarecontrol_queens-=(9*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
+					else if(tempPieceType=='r')
+					{
+						positionEvaluation.positional_squarecontrol_rooks-=(5*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
+					}
+					else if(tempPieceType=='b')
+					{
+						positionEvaluation.positional_squarecontrol_bishops-=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
+					}
+					else if(tempPieceType=='n')
+					{
+						positionEvaluation.positional_squarecontrol_knights-=(3*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
+					}
+					else if(tempPieceType=='p')
+					{
+						positionEvaluation.positional_squarecontrol_pawns-=(1*PIECE_CONTROL_WEIGHT*turnBasedBonusBlack);
+					}
 				}
 				positionEvaluation.positional_squarecontrol_base-=SQUARE_CONTROL_WEIGHT;
 

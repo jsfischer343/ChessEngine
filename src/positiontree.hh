@@ -29,8 +29,8 @@
 #include "move.hh"
 #include "position.hh"
 
-#define POSITION_OBJ_EPHEMERAL_DEPTH 3 //nodes at this depth will no longer save their position obj and will instead only instantiate it when needed (purpose being to save memory as position objects take up excessive memory)
-#define MAX_DEPTH 4 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
+#define POSITION_OBJ_EPHEMERAL_DEPTH 4 //nodes at this depth will no longer save their position obj and will instead only instantiate it when needed (purpose being to save memory as position objects take up excessive memory)
+#define MAX_DEPTH 7 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
 #define EVALUATION_EQUIVALENCY_THRESHOLD 0.01 //The differential threshold that is used to determine if two moves have 'essentially' equal evaluation
 
 

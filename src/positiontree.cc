@@ -94,7 +94,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 		currentNodePositionObjIsEphemeral = true;
 		generatePositionTreeRecursive_reinstantiatePositionObjsRecursiveUpwards(node);
 	}
-	if(depth==0 || !(node->position->positionState==0 && node->drawByRepetition==false))
+	if(depth==0 || node->position->positionState!=0 || node->drawByRepetition!=false)
 	{
 		node->colorToMove = node->position->colorToMove;
 		node->branchRecursiveAvg = node->instantEval;
