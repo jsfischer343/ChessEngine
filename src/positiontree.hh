@@ -29,13 +29,22 @@
 #include "move.hh"
 #include "position.hh"
 
-#define POSITION_OBJ_EPHEMERAL_DEPTH 4 //nodes at this depth will no longer save their position obj and will instead only instantiate it when needed (purpose being to save memory as position objects take up excessive memory)
-#define MAX_DEPTH 7 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
+#define POSITION_OBJ_EPHEMERAL_DEPTH 3 //nodes at this depth will no longer save their position obj and will instead only instantiate it when needed (purpose being to save memory as position objects take up excessive memory)
+#define MAX_DEPTH 15 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
 #define EVALUATION_EQUIVALENCY_THRESHOLD 0.01 //The differential threshold that is used to determine if two moves have 'essentially' equal evaluation
 
 
 class PositionTree
 {
+	public:
+		struct treeinfo
+		{
+			long totalNodes = 1; //1 for root
+			int depth = 0;
+		};
+		typedef struct treeinfo treeinfo;
+		treeinfo treeInfo; //Informaiton about the positiontree for optimizations
+
 	private:
 		//STRUCTS
 		struct treenode
@@ -56,16 +65,10 @@ class PositionTree
 			treenode** children; //random note: most positions don't have more than 60 legal moves and almost none have more than 120
 		};
 		typedef struct treenode treenode;
-		struct treeinfo
-		{
-			long totalNodes = 1; //1 for root
-		};
-		typedef struct treeinfo treeinfo;
 
         //DATA
 		treenode* initNode; //Initial node which is the true root of the tree
 		treenode* root; //The root of the tree which acts at the 'current position'
-		treeinfo treeInfo; //Informaiton about the positiontree for optimizations
 
     public:
 		//FUNCTIONS
@@ -85,7 +88,6 @@ class PositionTree
 		void expandFromRoot(int depth);
 	public:
 		bool expandNextBestBranch();
-		bool expandXNextBestBranches(int numberOfBranches); //run expandNextBestBranch X number of times
 	private:
 			treenode* expandNextBestBranch_findExpansionBranchRecursive(treenode* currentNode);
 		//Refresh
@@ -99,6 +101,7 @@ class PositionTree
 		void sortChildrenByBranchBest(treenode* node);
 		bool positionsIdentical(treenode* node1, treenode* node2);
 		bool checkForRepetition(treenode* node);
+		int getCurrentTreeDepth(treenode* node);
 
     public:
 	//--Get--

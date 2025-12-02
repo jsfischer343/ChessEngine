@@ -42,6 +42,7 @@ class UCI
         struct ucioptions
         {
             std::string dummy = "";
+            bool quietMode = false;
         };
         struct ucigoparams
         {
@@ -74,6 +75,9 @@ class UCI
         //synchronization
         std::thread* goThread = NULL;
         std::chrono::time_point<std::chrono::steady_clock> goThread_startTime;
+        long goThread_startingNodeNumber = 0;
+        //
+        long infoPrintPeriod = 200;
 
     public:
         UCI();

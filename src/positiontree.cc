@@ -94,6 +94,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 		currentNodePositionObjIsEphemeral = true;
 		generatePositionTreeRecursive_reinstantiatePositionObjsRecursiveUpwards(node);
 	}
+
 	if(depth==0 || node->position->positionState!=0 || node->drawByRepetition!=false)
 	{
 		node->colorToMove = node->position->colorToMove;
@@ -125,6 +126,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 	{
 		node->children_L = node->position->getTotalMoves();
 	}
+
 	if(node->children_L==0) //if this is true than there are no more legal moves or the game has come to a draw for this node.
 	{
 		node->colorToMove = node->position->colorToMove;
@@ -138,6 +140,10 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 	}
 	else
 	{
+		if((node->depth-root->depth)+1>treeInfo.depth)
+		{
+			treeInfo.depth = (node->depth-root->depth)+1;
+		}
 		node->children = new treenode*[node->children_L];
 		currentMoveArr = node->position->getAllMoves();
 		for(int i=0;i<node->children_L;i++)
@@ -194,19 +200,8 @@ bool PositionTree::expandNextBestBranch()
 	{
 		return false;
 	}
-	expandTree(nextNodeToExpand,1);
+	expandTree(nextNodeToExpand,2);
 	refreshTreeCalculationsRecursiveUpwards(nextNodeToExpand->parent);
-	return true;
-}
-bool PositionTree::expandXNextBestBranches(int numberOfBranches)
-{
-	for(int i=0;i<numberOfBranches;i++)
-	{
-		if(expandNextBestBranch()==false)
-		{
-			return false;
-		}
-	}
 	return true;
 }
 PositionTree::treenode* PositionTree::expandNextBestBranch_findExpansionBranchRecursive(treenode* currentNode)
@@ -260,6 +255,7 @@ void PositionTree::destroyEntireTree_recursive(treenode* node)
 {
 	if(node->children_L==0)
 	{
+		treeInfo.totalNodes--;
 		delete node->position;
 		delete node;
 		node = NULL;
@@ -270,6 +266,7 @@ void PositionTree::destroyEntireTree_recursive(treenode* node)
 		{
 			destroyEntireTree_recursive(node->children[i]);
 		}
+		treeInfo.totalNodes--;
 		delete[] node->children;
 		delete node->position;
 		delete node;
@@ -332,6 +329,7 @@ void PositionTree::destroySubTree(treenode* node)
 			node->parent->children = new_children;
 		}
 		node->parent->children_L--;
+		treeInfo.totalNodes--;
 		//2. Run destroyEntireTree_recursive on 'node' (i.e. the child)
 		destroyEntireTree_recursive(node);
 	}
@@ -425,6 +423,27 @@ bool PositionTree::checkForRepetition(treenode* node)
 		currentNode = currentNode->parent;
 	}
 	return false;
+}
+int PositionTree::getCurrentTreeDepth(treenode* node)
+{
+	int max = 0;
+	int branchDepth;
+	if(node->children_L==0)
+	{
+		return node->depth;
+	}
+	else
+	{
+		for(int i=0;i<node->children_L;i++)
+		{
+			branchDepth = getCurrentTreeDepth(node->children[i]);
+			if(branchDepth>max)
+			{
+				max = branchDepth;
+			}
+		}
+		return max;
+	}
 }
 
 //--Get--
@@ -523,9 +542,11 @@ void PositionTree::makeMove_shiftTree(const move moveMade)
 	}
 	//2. Set root pointer to only remaining child of root (i.e. the node of the moveMade)
 	root = root->children[0];
-	//3. Expand the tree so it at least has the next layer after root
+	//3. reset tree depth
+	treeInfo.depth = getCurrentTreeDepth(this->root)-root->depth;
+	//4. Expand the tree so it at least has the next layer after root
 	expandFromRoot(1);
-	//4. If the position objects in the new root's children has been NULL'd then reinstantiate them
+	//5. If the position objects in the new root's children has been NULL'd then reinstantiate them
 	for(int i=0;i<root->children_L;i++)
 	{
 		if(root->children[i]->position==NULL)
@@ -605,7 +626,7 @@ void PositionTree::printPositionTree_recursive(PositionTree::treenode* node, int
     {
         printf("\t");
     }
-    printf("[%d]: %s  IE: %.3f  BRA: %.3f  BB: %.3f\n",node->depth,moveNotation,node->instantEval,node->branchRecursiveAvg,node->branchBest);
+    printf("[%d]: %s  IE: %.3f  BRA: %.3f  BB: %.3f BMD: %d\n",node->depth,moveNotation,node->instantEval,node->branchRecursiveAvg,node->branchBest,getCurrentTreeDepth(node));
 	if(node->children_L!=0&&depth!=0)
 	{
 		for(int i=0;i<node->children_L;i++)

@@ -3016,7 +3016,7 @@ void Position::resolve_positionState()
 	piece currentPiece;
 	if(colorToMove=='w')
 	{
-		for(int i=0;i<whitePieces_L;i++)
+		for(int i=0;i<MAX_PIECES;i++)
 		{
 			currentPiece = whitePieces[i];
 			if(currentPiece.moves_L!=0)
@@ -3038,7 +3038,7 @@ void Position::resolve_positionState()
 	}
 	else
 	{
-		for(int i=0;i<blackPieces_L;i++)
+		for(int i=0;i<MAX_PIECES;i++)
 		{
 			currentPiece = blackPieces[i];
 			if(currentPiece.moves_L!=0)

@@ -44,7 +44,6 @@ class CLI
         void command_help();
 
         void printHelp();
-        void printLicense();
 };
 
 #endif

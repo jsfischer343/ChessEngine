@@ -97,11 +97,6 @@ bool UCI::parseCommand_validCommand(std::string command)
 }
 void UCI::parseCommand(std::string userInput)
 {
-    if(userInput=="exit"||userInput=="quit")
-    {
-        uciStates.stop = true;
-        return;
-    }
     inputTokens.clear(); //reset inputTokens from last command
 
     bool moreTokens = true;
@@ -270,6 +265,18 @@ void UCI::in_setoption()
         if(optionName=="dummy")
         {
             uciOptions.dummy = optionValue;
+        }
+
+        if(optionName=="quietmode")
+        {
+            if(optionValue=="true")
+            {
+                uciOptions.quietMode = true;
+            }
+            else
+            {
+                uciOptions.quietMode = false;
+            }
         }
     }
     else
@@ -888,9 +895,29 @@ bool UCI::in_go_searchThread_shouldStop()
 }
 void UCI::in_go_searchThread()
 {
+    std::chrono::time_point<std::chrono::steady_clock> lastInfoPrintTime = goThread_startTime;
+    goThread_startingNodeNumber = uciPositionTree->treeInfo.totalNodes;
+    int lastDepth = uciPositionTree->treeInfo.depth;
     while(!in_go_searchThread_shouldStop())
     {
-        uciPositionTree->expandNextBestBranch();
+        if(!uciPositionTree->expandNextBestBranch())
+        {
+            if(uciGoParams.infinite==false)
+            {
+                break;
+            }
+        }
+        if(uciOptions.quietMode==false)
+        {
+            std::chrono::duration duration = std::chrono::steady_clock::now() - lastInfoPrintTime;
+            std::chrono::duration duration_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+            if(infoPrintPeriod<duration_milliseconds.count()||uciPositionTree->treeInfo.depth!=lastDepth||uciPositionTree->treeInfo.totalNodes%10000==0)
+            {
+                lastInfoPrintTime = std::chrono::steady_clock::now();
+                out_info();
+            }
+        }
+        lastDepth = uciPositionTree->treeInfo.depth;
     }
     out_bestmove(uciPositionTree->getBestMove());
     uciStates.isready = true; //update isready
@@ -946,6 +973,7 @@ void UCI::out_id()
 {
     std::cout << "id name BlueSpiral " << GLOBAL_BLUESPIRAL_VERSION << std::endl;
 	std::cout << "id author " << GLOBAL_AUTHOR << std::endl;
+    std::cout << std::endl;
 }
 void UCI::out_uciok()
 {
@@ -970,10 +998,29 @@ void UCI::out_bestmove(move bestMove)
 // }
 void UCI::out_info()
 {
+    std::chrono::duration searchDuration = std::chrono::steady_clock::now() - goThread_startTime;
+    std::chrono::duration searchDuration_milliseconds =  std::chrono::duration_cast<std::chrono::milliseconds>(searchDuration);
+    std::chrono::duration searchDuration_microseconds =  std::chrono::duration_cast<std::chrono::microseconds>(searchDuration);
+
+    long searchDuration_milliseconds_asInteger = searchDuration_milliseconds.count();
+    long searchDuration_microseconds_asInteger = searchDuration_microseconds.count();
+
+    int nodesPerSecond = 0;
+    if(searchDuration_milliseconds_asInteger>0)
+    {
+        nodesPerSecond = (int)(((uciPositionTree->treeInfo.totalNodes-goThread_startingNodeNumber)/((double)searchDuration_microseconds_asInteger))*1000*1000);
+    }
+    else
+    {
+        return;
+    }
+
+    std::cout << "info depth " << uciPositionTree->treeInfo.depth << " time " << searchDuration_milliseconds_asInteger << " nodes " << uciPositionTree->treeInfo.totalNodes << " nps " << nodesPerSecond << std::endl;
 }
 void UCI::out_sendOptions()
 {
     std::cout << "option name dummy type string default test123" << std::endl;
+    std::cout << "option name Quiet Mode type check default false" << std::endl;
 }
 
 //Utility
@@ -1032,7 +1079,7 @@ void UCI::setupPositionTree()
         delete uciPositionTree;
         uciPositionTree=NULL;
     }
-    uciPositionTree = new PositionTree(2);
+    uciPositionTree = new PositionTree(1);
 }
 void UCI::setupPositionTree(std::string fenString)
 {
@@ -1040,5 +1087,5 @@ void UCI::setupPositionTree(std::string fenString)
     {
         delete uciPositionTree;
     }
-    uciPositionTree = new PositionTree(fenString.c_str(),2);
+    uciPositionTree = new PositionTree(fenString.c_str(),1);
 }
