@@ -98,6 +98,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 	if(depth==0 || node->position->positionState!=0 || node->drawByRepetition!=false)
 	{
 		node->colorToMove = node->position->colorToMove;
+		node->positionState = node->position->positionState;
 		node->branchRecursiveAvg = node->instantEval;
 		node->branchBest = node->instantEval;
 		if(currentNodePositionObjIsEphemeral)
@@ -113,6 +114,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 			generatePositionTreeRecursive(node->children[i], depth-1);
 		}
 		node->colorToMove = node->position->colorToMove;
+		node->positionState = node->position->positionState;
 		node->branchRecursiveAvg = node->instantEval;
 		node->branchBest = node->instantEval;
 		refreshTreeCalculationsRecursiveUpwards(node);
@@ -130,6 +132,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 	if(node->children_L==0) //if this is true than there are no more legal moves or the game has come to a draw for this node.
 	{
 		node->colorToMove = node->position->colorToMove;
+		node->positionState = node->position->positionState;
 		node->branchRecursiveAvg = node->instantEval;
 		node->branchBest = node->instantEval;
 		if(currentNodePositionObjIsEphemeral)
@@ -154,6 +157,7 @@ PositionTree::treenode* PositionTree::generatePositionTreeRecursive(treenode* no
 			node->children[i]->parent = node;
 			node->children[i]->position = resultingPosition;
 			node->children[i]->colorToMove = resultingPosition->colorToMove;
+			node->children[i]->positionState = resultingPosition->positionState;
 			node->children[i]->moveMade = currentMoveArr[i];
 			if(checkForRepetition(node->children[i]))
 			{
@@ -200,7 +204,7 @@ bool PositionTree::expandNextBestBranch()
 	{
 		return false;
 	}
-	expandTree(nextNodeToExpand,2);
+	expandTree(nextNodeToExpand,1);
 	refreshTreeCalculationsRecursiveUpwards(nextNodeToExpand->parent);
 	return true;
 }
@@ -208,7 +212,7 @@ PositionTree::treenode* PositionTree::expandNextBestBranch_findExpansionBranchRe
 {
 	if(currentNode->children_L==0)
 	{
-		if(currentNode->depth<(MAX_DEPTH+root->depth))
+		if(currentNode->depth<(MAX_DEPTH+root->depth) && currentNode->positionState==0)
 		{
 			return currentNode;
 		}
@@ -228,6 +232,84 @@ PositionTree::treenode* PositionTree::expandNextBestBranch_findExpansionBranchRe
 				return nextNodeToExpand;
 			}
 		}
+	}
+	return NULL;
+}
+bool PositionTree::expandNextBestBranchRecursiveAvg()
+{
+	treenode* nextNodeToExpand = expandNextBestBranchRecursiveAvg_findExpansionBranchRecursive(root);
+	if(nextNodeToExpand==NULL)
+	{
+		return false;
+	}
+	expandTree(nextNodeToExpand,1);
+	refreshTreeCalculationsRecursiveUpwards(nextNodeToExpand->parent);
+	return true;
+}
+PositionTree::treenode* PositionTree::expandNextBestBranchRecursiveAvg_findExpansionBranchRecursive(treenode* currentNode)
+{
+	if(currentNode->children_L==0)
+	{
+		if(currentNode->depth<(MAX_DEPTH+root->depth) && currentNode->positionState==0)
+		{
+			return currentNode;
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	else
+	{
+		//sort all nodes in this branch by best branch average for the current color-
+		treenode** branchAvgSorted = new treenode*[currentNode->children_L];
+		for(int i=0;i<currentNode->children_L;i++)
+		{
+			branchAvgSorted[i] = currentNode->children[i];
+		}
+		treenode* temp;
+		if(currentNode->colorToMove=='w')
+		{
+			for(int i=0;i<currentNode->children_L;i++)
+			{
+				for(int j=i+1;j<currentNode->children_L;j++)
+				{
+					if(branchAvgSorted[i]->branchBest < branchAvgSorted[j]->branchBest)
+					{
+						temp = branchAvgSorted[i];
+						branchAvgSorted[i] = branchAvgSorted[j];
+						branchAvgSorted[j] = temp;
+					}
+				}
+			}
+		}
+		else
+		{
+			for(int i=0;i<currentNode->children_L;i++)
+			{
+				for(int j=i+1;j<currentNode->children_L;j++)
+				{
+					if(branchAvgSorted[i]->branchBest > branchAvgSorted[j]->branchBest)
+					{
+						temp = branchAvgSorted[i];
+						branchAvgSorted[i] = branchAvgSorted[j];
+						branchAvgSorted[j] = temp;
+					}
+				}
+			}
+		}
+		//-
+
+		treenode* nextNodeToExpand;
+		for(int i=0;i<currentNode->children_L;i++)
+		{
+			nextNodeToExpand = expandNextBestBranch_findExpansionBranchRecursive(branchAvgSorted[i]);
+			if(nextNodeToExpand!=NULL)
+			{
+				return nextNodeToExpand;
+			}
+		}
+		delete[] branchAvgSorted;
 	}
 	return NULL;
 }
@@ -596,7 +678,7 @@ void PositionTree::printPositionTree_recursive(PositionTree::treenode* node)
     {
         printf("\t");
     }
-    printf("[%d]: %s  IE: %.3f  BRA: %.3f  BB: %.3f\n",node->depth,moveNotation,node->instantEval,node->branchRecursiveAvg,node->branchBest);
+    printf("[%d]: %s  IE: %.3f\tBRA: %.3f\tBB: %.3f\n",node->depth,moveNotation,node->instantEval,node->branchRecursiveAvg,node->branchBest);
 	if(node->children_L!=0)
 	{
 		for(int i=0;i<node->children_L;i++)
@@ -626,7 +708,7 @@ void PositionTree::printPositionTree_recursive(PositionTree::treenode* node, int
     {
         printf("\t");
     }
-    printf("[%d]: %s  IE: %.3f  BRA: %.3f  BB: %.3f BMD: %d\n",node->depth,moveNotation,node->instantEval,node->branchRecursiveAvg,node->branchBest,getCurrentTreeDepth(node));
+    printf("[%d]: %s  IE: %.3f\tBRA: %.3f\tBB: %.3f\tBMD: %d\n",node->depth,moveNotation,node->instantEval,node->branchRecursiveAvg,node->branchBest,getCurrentTreeDepth(node));
 	if(node->children_L!=0&&depth!=0)
 	{
 		for(int i=0;i<node->children_L;i++)

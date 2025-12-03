@@ -41,7 +41,6 @@ class UCI
         };
         struct ucioptions
         {
-            std::string dummy = "";
             bool quietMode = false;
         };
         struct ucigoparams
@@ -75,9 +74,9 @@ class UCI
         //synchronization
         std::thread* goThread = NULL;
         std::chrono::time_point<std::chrono::steady_clock> goThread_startTime;
-        long goThread_startingNodeNumber = 0;
+        long goThread_startingNodeNumber = 0; //used to save the nodes that already exist before the go command was sent. This is so that nps and other metrics are represented correctly.
         //
-        long infoPrintPeriod = 200;
+        long infoPrintPeriod = 200; //there will be an info update at least every X ms where X is the infoPrintPeriod
 
     public:
         UCI();

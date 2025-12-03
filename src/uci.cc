@@ -262,11 +262,6 @@ void UCI::in_setoption()
         }
 
         //Options
-        if(optionName=="dummy")
-        {
-            uciOptions.dummy = optionValue;
-        }
-
         if(optionName=="quietmode")
         {
             if(optionValue=="true")
@@ -1008,7 +1003,7 @@ void UCI::out_info()
     int nodesPerSecond = 0;
     if(searchDuration_milliseconds_asInteger>0)
     {
-        nodesPerSecond = (int)(((uciPositionTree->treeInfo.totalNodes-goThread_startingNodeNumber)/((double)searchDuration_microseconds_asInteger))*1000*1000);
+        nodesPerSecond = (int)(((uciPositionTree->treeInfo.totalNodes-goThread_startingNodeNumber)/((double)searchDuration_microseconds_asInteger))*1000*1000); //TODO: fix this abomination
     }
     else
     {
@@ -1019,7 +1014,6 @@ void UCI::out_info()
 }
 void UCI::out_sendOptions()
 {
-    std::cout << "option name dummy type string default test123" << std::endl;
     std::cout << "option name Quiet Mode type check default false" << std::endl;
 }
 

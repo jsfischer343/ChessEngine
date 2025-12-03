@@ -19,7 +19,7 @@
 #ifndef __GLOBAL_HH__
 #define __GLOBAL_HH__
 
-#define GLOBAL_BLUESPIRAL_VERSION "0.2.5"
+#define GLOBAL_BLUESPIRAL_VERSION "0.3.1"
 #define GLOBAL_CODE_SOURCE "github.com/jsfischer343/chessengine-bluespiral"
 #define GLOBAL_AUTHOR "jsfischer343"
 #define GLOBAL_LICENSE_STATEMENT "This program comes with ABSOLUTELY NO WARRANTY; for details see <https://www.gnu.org/licenses/gpl-3.0.txt>"

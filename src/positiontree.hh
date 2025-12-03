@@ -30,7 +30,7 @@
 #include "position.hh"
 
 #define POSITION_OBJ_EPHEMERAL_DEPTH 3 //nodes at this depth will no longer save their position obj and will instead only instantiate it when needed (purpose being to save memory as position objects take up excessive memory)
-#define MAX_DEPTH 15 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
+#define MAX_DEPTH 6 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
 #define EVALUATION_EQUIVALENCY_THRESHOLD 0.01 //The differential threshold that is used to determine if two moves have 'essentially' equal evaluation
 
 
@@ -55,6 +55,7 @@ class PositionTree
 			Position* position;
 			move moveMade;
 			char colorToMove;
+			int8_t positionState = 0;
             int depth;
 			float instantEval = 0; //A biased evaluation that only takes the current position into account
 			float branchRecursiveAvg = 0; //The average of all this node's childrens' branchRecursiveAverages (recursive metric)
@@ -88,8 +89,10 @@ class PositionTree
 		void expandFromRoot(int depth);
 	public:
 		bool expandNextBestBranch();
+		bool expandNextBestBranchRecursiveAvg();
 	private:
 			treenode* expandNextBestBranch_findExpansionBranchRecursive(treenode* currentNode);
+			treenode* expandNextBestBranchRecursiveAvg_findExpansionBranchRecursive(treenode* currentNode);
 		//Refresh
 		void refreshTreeCalculationsRecursiveUpwards(treenode* node);
         //Destroy
