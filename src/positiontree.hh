@@ -29,8 +29,8 @@
 #include "move.hh"
 #include "position.hh"
 
-#define POSITION_OBJ_EPHEMERAL_DEPTH 3 //nodes at this depth will no longer save their position obj and will instead only instantiate it when needed (purpose being to save memory as position objects take up excessive memory)
-#define MAX_DEPTH 6 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
+#define POSITION_OBJ_EPHEMERAL_DEPTH 2 //nodes at this depth will no longer save their position obj and will instead only instantiate it when needed (purpose being to save memory as position objects take up excessive memory)
+#define MAX_DEPTH 10 //Maximum depth that the tree will be expanded to when using expandNextBestBranch()
 #define EVALUATION_EQUIVALENCY_THRESHOLD 0.01 //The differential threshold that is used to determine if two moves have 'essentially' equal evaluation
 
 
@@ -57,6 +57,7 @@ class PositionTree
 			char colorToMove;
 			int8_t positionState = 0;
             int depth;
+			int longestBranchDepth = 0;
 			float instantEval = 0; //A biased evaluation that only takes the current position into account
 			float branchRecursiveAvg = 0; //The average of all this node's childrens' branchRecursiveAverages (recursive metric)
 			float branchBest = 0; //The best "response" if this move (node) was selected (recursive metric)
@@ -70,6 +71,7 @@ class PositionTree
         //DATA
 		treenode* initNode; //Initial node which is the true root of the tree
 		treenode* root; //The root of the tree which acts at the 'current position'
+		int8_t decisionMatrixStateIterator = 0;
 
     public:
 		//FUNCTIONS
@@ -82,23 +84,43 @@ class PositionTree
     private:
         //Create
         treenode* generatePositionTreeRecursive(treenode* node, int depth);
-			void generatePositionTreeRecursive_reinstantiatePositionObjsRecursiveUpwards(treenode* node);
-			void generatePositionTreeRecursive_destroyPositionObjsRecursiveUpwards(treenode* node);
         //Expand
         void expandTree(treenode* startingNode, int depth);
 		void expandFromRoot(int depth);
 	public:
-		bool expandNextBestBranch();
-		bool expandNextBestBranchRecursiveAvg();
+		bool expandNextDecisionMatrix();
+
+		bool expandNextBestBranchDeep();
+		bool expandNextBestBranchWide();
+		bool expandNextBestBranchRecursiveAvgDeep();
+
+		bool expandNextCheckDeep();
+		// bool expandNextCheckWide();
+		bool expandNextCaptureDeep();
+		// bool expandNextCaptureWide();
 	private:
-			treenode* expandNextBestBranch_findExpansionBranchRecursive(treenode* currentNode);
-			treenode* expandNextBestBranchRecursiveAvg_findExpansionBranchRecursive(treenode* currentNode);
+			treenode* expandNextBestBranchDeep_findExpansionBranchRecursive(treenode* node);
+			treenode* expandNextBestBranchWide_findExpansionBranch(treenode* node);
+				treenode* expandNextBestBranchWide_findExpansionBranch_limitDepthRecursive(treenode* node, int depthLimit);
+			treenode* expandNextBestBranchRecursiveAvgDeep_findExpansionBranchRecursive(treenode* node);
+
+			treenode* expandNextCheckDeep_findExpansionBranchRecursive(treenode* node);
+			// treenode* expandNextCheckWide_findExpansionBranch(treenode* node);
+			// 	treenode* expandNextCheckWide_findExpansionBranch_limitDepthRecursive(treenode* node, int depthLimit);
+			treenode* expandNextCaptureDeep_findExpansionBranchRecursive(treenode* node);
+			// treenode* expandNextCaptureWide_findExpansionBranch(treenode* node);
+			// 	treenode* expandNextCaptureWide_findExpansionBranch_limitDepthRecursive(treenode* node, int depthLimit);
 		//Refresh
 		void refreshTreeCalculationsRecursiveUpwards(treenode* node);
+		void refreshLongestBranchDepthRecursiveUpwards(treenode* node);
         //Destroy
 		void destroyEntireTree();
 			void destroyEntireTree_recursive(treenode* node);
 		void destroySubTree(treenode* node);
+		//Tree Utilities
+		void reinstantiateTreeNodePositionObjsRecursiveUpwards(treenode* node);
+		void destroyTreeNodePositionObjsRecursiveUpwards(treenode* node);
+		void destroyCurrentTreeNodePositionObject(treenode* node);
 
 	//--Utility--
 		void sortChildrenByBranchBest(treenode* node);
@@ -127,6 +149,10 @@ class PositionTree
 		void printTreeInfo();
 		void printPositionTree();
 		void printPositionTree(int depth);
+		void printExtraDebug();
+		long countNodes(treenode* node);
+		long countNodes(treenode* node, int depth);
+		long getTotalInitializedPositionObjects(treenode* node);
 	private:
 			void printPositionTree_recursive(treenode* node);
 			void printPositionTree_recursive(treenode* node, int depth);

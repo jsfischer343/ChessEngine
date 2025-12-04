@@ -895,7 +895,7 @@ void UCI::in_go_searchThread()
     int lastDepth = uciPositionTree->treeInfo.depth;
     while(!in_go_searchThread_shouldStop())
     {
-        if(!uciPositionTree->expandNextBestBranch())
+        if(!uciPositionTree->expandNextDecisionMatrix())
         {
             if(uciGoParams.infinite==false)
             {
@@ -958,6 +958,7 @@ void UCI::in_debugdump()
 {
     uciPositionTree->printPositionTree(1);
     uciPositionTree->printTreeInfo();
+    uciPositionTree->printExtraDebug();
     Position* debugPosition = uciPositionTree->getCurrentPosition();
     debugPosition->printBoard();
     debugPosition->printInfo();
@@ -994,23 +995,20 @@ void UCI::out_bestmove(move bestMove)
 void UCI::out_info()
 {
     std::chrono::duration searchDuration = std::chrono::steady_clock::now() - goThread_startTime;
-    std::chrono::duration searchDuration_milliseconds =  std::chrono::duration_cast<std::chrono::milliseconds>(searchDuration);
-    std::chrono::duration searchDuration_microseconds =  std::chrono::duration_cast<std::chrono::microseconds>(searchDuration);
-
-    long searchDuration_milliseconds_asInteger = searchDuration_milliseconds.count();
-    long searchDuration_microseconds_asInteger = searchDuration_microseconds.count();
+    long searchDuration_milliseconds =  std::chrono::duration_cast<std::chrono::milliseconds>(searchDuration).count();
+    double searchDuration_seconds =  std::chrono::duration<double>(searchDuration).count();
 
     int nodesPerSecond = 0;
-    if(searchDuration_milliseconds_asInteger>0)
+    if(searchDuration_milliseconds>0)
     {
-        nodesPerSecond = (int)(((uciPositionTree->treeInfo.totalNodes-goThread_startingNodeNumber)/((double)searchDuration_microseconds_asInteger))*1000*1000); //TODO: fix this abomination
+        nodesPerSecond = (int)((uciPositionTree->treeInfo.totalNodes-goThread_startingNodeNumber)/searchDuration_seconds);
     }
     else
     {
         return;
     }
 
-    std::cout << "info depth " << uciPositionTree->treeInfo.depth << " time " << searchDuration_milliseconds_asInteger << " nodes " << uciPositionTree->treeInfo.totalNodes << " nps " << nodesPerSecond << std::endl;
+    std::cout << "info depth " << uciPositionTree->treeInfo.depth << " time " << searchDuration_milliseconds << " nodes " << uciPositionTree->treeInfo.totalNodes << " nps " << nodesPerSecond << std::endl;
 }
 void UCI::out_sendOptions()
 {

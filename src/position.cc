@@ -1465,6 +1465,44 @@ bool Position::adjacentToKing(int8_t rank, int8_t file, Position::piece* kingPtr
 	else
 		return false;
 }
+bool Position::isInCheck()
+{
+	if(colorToMove=='w')
+	{
+		if(getTotalTargeters(getKingPtr('w')->squarePtr,'b')!=0)
+		{
+			return true;
+		}
+	}
+	else
+	{
+		if(getTotalTargeters(getKingPtr('b')->squarePtr,'w')!=0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+bool Position::isCapture(const move& moveToBeChecked)
+{
+	if(colorToMove=='w')
+	{
+		if(getPieceColor(moveToBeChecked.startRank,moveToBeChecked.startFile)=='w'&&
+		getPieceColor(moveToBeChecked.endRank,moveToBeChecked.endFile)=='b')
+		{
+			return true;
+		}
+	}
+	else
+	{
+		if(getPieceColor(moveToBeChecked.startRank,moveToBeChecked.startFile)=='b'&&
+		getPieceColor(moveToBeChecked.endRank,moveToBeChecked.endFile)=='w')
+		{
+			return true;
+		}
+	}
+	return false;
+}
 char Position::engineRank_TO_notationRank(int8_t engineRank)
 {
 	switch(engineRank)
